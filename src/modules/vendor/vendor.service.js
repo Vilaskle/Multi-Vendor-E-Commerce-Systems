@@ -1,6 +1,6 @@
 import Vendor from "../../models/Vendor.js";
 import jwt from "jsonwebtoken";
-import { sendVendorEmailOtp } from "../../services/email/email.service.js";
+import { sendOtpEmail } from "../../services/email/email.service.js";
 import Product from "../../models/Product.js";
 import { uploadToCloudinary } from "../../utils/cloudinaryUpload.js";
 
@@ -55,7 +55,9 @@ export const requestVendorLoginOtpService = async (email) => {
   vendor.emailOtpExpiry = expiry;
   await vendor.save();
 
-  await sendVendorEmailOtp(email, otp);
+  // await sendVendorEmailOtp(email, otp);
+ await sendOtpEmail({ to: email, otp, purpose: "LOGIN", role: "Vendor" });
+
 };
 
 // STEP 2: VERIFY OTP

@@ -2,6 +2,8 @@ import Vendor from "../../models/Vendor.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import Admin from "../../models/Admin.js";
+
+
 export const adminLoginService = async (email, password) => {
   const admin = await Admin.findOne({ email });
 
