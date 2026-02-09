@@ -9,7 +9,7 @@ const app = express();
 app.use(express.json());
 
 // Routes
-app.use("/api", authRoutes);
+// app.use("/api", authRoutes);
 app.use("/api", userRoutes);
 app.use("/api", vendorRoutes);
 app.use("/api", adminRoutes);

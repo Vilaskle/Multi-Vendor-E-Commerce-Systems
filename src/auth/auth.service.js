@@ -31,6 +31,7 @@ export const registerUserService = async ({
     id: newUser._id,
     name: newUser.name,
     phoneNo: newUser.phoneNo,
+    address:newUser.address
   };
 };
 

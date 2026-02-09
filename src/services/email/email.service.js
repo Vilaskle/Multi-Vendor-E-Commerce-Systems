@@ -78,6 +78,8 @@ const transporter = nodemailer.createTransport({
 });
 
 
+
+
 export const sendVendorEmailOtp = async (toEmail, otp) => {
    const transporter = nodemailer.createTransport({
     service: "gmail",
