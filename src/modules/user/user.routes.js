@@ -31,4 +31,5 @@ router.post("/user/resend-otp",otpRateLimiter, resendOtp);
 router.get("/user/profile", authMiddleware,isUser, getUserProfile);
 router.put("/user/profile", authMiddleware,isUser, updateUserProfile);
 
+
 export default router;

@@ -153,10 +153,10 @@ export const loginWithPasswordService = async ({ email, password }) => {
   const token = jwt.sign(
     {
       userId: user._id,
-      role: "USER",
+      role: user.role,
     },
     process.env.JWT_SECRET,
-    { expiresIn: "7d" }
+    { expiresIn: "1d" }
   );
 
   return {
@@ -192,6 +192,7 @@ export const requestUserLoginOtpService = async (email) => {
 
   // await sendEmailOtp(email, otp);
   await sendOtpEmail({ to: email, otp, purpose: "LOGIN", role: "USER" });
+  return {email};
 };
 
 // STEP 2: VERIFY OTP
@@ -202,12 +203,13 @@ export const verifyUserLoginOtpService = async (email, otp) => {
     throw new Error("User not found");
   }
 
-  if (
-    user.emailOtp !== otp ||
-    user.emailOtpExpiry < new Date()
-  ) {
-    throw new Error("Invalid or expired OTP");
-  }
+ if (user.emailOtp !== otp) {
+  throw new Error("Invalid OTP");
+}
+
+if (user.emailOtpExpiry < new Date()) {
+  throw new Error("OTP expired");
+}
 
   // Clear OTP
   user.emailOtp = null;
@@ -369,7 +371,7 @@ export const resendOtpService = async ({ email, type }) => {
 
 export const getUserProfileService = async (userId) => {
   const user = await User.findById(userId).select(
-    "-emailOtp -emailOtpExpiry"
+    "-password -emailOtp -emailOtpExpiry"
   );
 
   if (!user) {

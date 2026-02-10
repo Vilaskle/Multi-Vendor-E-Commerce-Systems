@@ -81,11 +81,12 @@ export const requestUserLoginOtp = async (req, res) => {
   try {
     const { email } = req.body;
 
-    await requestUserLoginOtpService(email);
+   const result =  await requestUserLoginOtpService(email);
 
     res.json({
       success: true,
-      message: "OTP sent to email"
+      message: "OTP sent to email",
+      data:result
     });
   } catch (err) {
     res.status(400).json({
