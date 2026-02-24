@@ -10,18 +10,27 @@ const adminSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
+      lowercase:true,
       unique: true,
+      
     },
 
     password: {
       type: String,
       required: true,
+      select:false,
     },
 
     role: {
       type: String,
       default: "ADMIN",
     },
+    isActive: {
+      type:Boolean,
+      default:true,
+    },
+
+    lastLogin:Date,
   },
   { timestamps: true }
 );

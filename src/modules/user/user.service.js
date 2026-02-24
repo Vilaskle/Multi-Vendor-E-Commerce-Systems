@@ -2,8 +2,7 @@ import User from "../../models/User.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
-// import { sendEmailOtp } from "../../services/email/email.service.js";
-import { sendOtpEmail } from "../../services/email/email.service.js";
+import  sendOtpEmail  from "../../services/email/email.service.js";
 
 const generateOtp = () =>
   Math.floor(100000 + Math.random() * 900000).toString();

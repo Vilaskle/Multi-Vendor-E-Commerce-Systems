@@ -1,26 +1,53 @@
-import { registerVendorService ,
+import {
+  registerVendorService,
   requestVendorLoginOtpService,
   verifyVendorLoginOtpService,
-getVendorProfileService,
+  getVendorProfileService,
   updateVendorProfileService,
-addProductService  } from "./vendor.service.js";
+  addProductService,
+} from "./vendor.service.js";
 
+import Vendor from "../../models/Vendor.js";
+
+/* ======================================================
+   1️⃣ REGISTER VENDOR (PUBLIC – NO LOGIN REQUIRED)
+====================================================== */
 export const registerVendor = async (req, res) => {
   try {
-    const { name, email, phoneNo } = req.body;
+    const { name, email, phoneNo, gstNumber } = req.body;
 
+    // ✅ Basic validation
+    if (!name || !email || !phoneNo || !gstNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Shop & Establishment License is required",
+      });
+    }
+
+    // ✅ Call service (Cloudinary upload + DB save)
     const vendor = await registerVendorService({
       name,
       email,
       phoneNo,
+      gstNumber,
+      shopLicenseFile: req.file,
     });
 
     res.status(201).json({
       success: true,
-      message: "Vendor registered successfully. Awaiting admin approval.",
+      message: "Vendor registered successfully. Waiting for admin approval.",
       data: vendor,
     });
+
   } catch (err) {
+    console.error("REGISTER VENDOR ERROR:", err.message);
     res.status(400).json({
       success: false,
       message: err.message,
@@ -28,7 +55,9 @@ export const registerVendor = async (req, res) => {
   }
 };
 
-
+/* ======================================================
+   2️⃣ REQUEST LOGIN OTP (ONLY APPROVED VENDORS)
+====================================================== */
 export const requestVendorLoginOtp = async (req, res) => {
   try {
     const { email } = req.body;
@@ -47,7 +76,9 @@ export const requestVendorLoginOtp = async (req, res) => {
   }
 };
 
-
+/* ======================================================
+   3️⃣ VERIFY OTP & LOGIN
+====================================================== */
 export const verifyVendorLoginOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -67,7 +98,9 @@ export const verifyVendorLoginOtp = async (req, res) => {
   }
 };
 
-// GET VENDOR PROFILE
+/* ======================================================
+   4️⃣ GET VENDOR PROFILE (LOGIN REQUIRED)
+====================================================== */
 export const getVendorProfile = async (req, res) => {
   try {
     const vendorId = req.user.vendorId;
@@ -86,7 +119,9 @@ export const getVendorProfile = async (req, res) => {
   }
 };
 
-// UPDATE VENDOR PROFILE
+/* ======================================================
+   5️⃣ UPDATE VENDOR PROFILE
+====================================================== */
 export const updateVendorProfile = async (req, res) => {
   try {
     const vendorId = req.user.vendorId;
@@ -109,17 +144,30 @@ export const updateVendorProfile = async (req, res) => {
     });
   }
 };
-
-
+/* ======================================================
+   6️⃣ ADD PRODUCT (ONLY APPROVED VENDORS)
+====================================================== */
 export const addProduct = async (req, res) => {
   try {
-
-    console.log("=== ADD PRODUCT DEBUG ===");
-    console.log("REQ.USER:", req.user);
-    console.log("REQ.BODY:", req.body);
-    console.log("FILES:", req.files);
-
+    // ✅ Vendor must be logged in to add product
     const vendorId = req.user.vendorId;
+
+    const vendor = await Vendor.findById(vendorId);
+
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found",
+      });
+    }
+
+    // ✅ Only admin-approved vendors can sell
+    if (vendor.status !== "APPROVED") {
+      return res.status(403).json({
+        success: false,
+        message: "Your account is not approved yet",
+      });
+    }
 
     const {
       name,
@@ -131,16 +179,15 @@ export const addProduct = async (req, res) => {
       colors,
     } = req.body;
 
-
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "At least one product image is required",
+        message: "Product images are required",
       });
     }
 
     const product = await addProductService({
-       name,
+      name,
       category,
       productType,
       price: Number(price),
@@ -156,12 +203,12 @@ export const addProduct = async (req, res) => {
       message: "Product added successfully",
       data: product,
     });
-  } catch (error) {
-  console.error("ADD PRODUCT FAILED:", error);
 
-  res.status(500).json({
-    success: false,
-    message: error.message || "Add product failed",
-  });
-}
+  } catch (err) {
+    console.error("ADD PRODUCT ERROR:", err);
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
 };

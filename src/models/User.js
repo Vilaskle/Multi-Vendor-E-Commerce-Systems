@@ -23,35 +23,91 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
 
     email: {
       type: String,
       required: true,
       unique: true,
       lowercase: true,
+      trim: true,
     },
 
-    phoneNo: { type: String },
-    address: { type: String },
+    phoneNo: {
+      type: String,
+    },
 
     password: {
       type: String,
       required: true,
-      select: false, // 🔐 never return by default
+      select: false, // 🔐 never return password by default
     },
-    role: { type: String, default: "USER"},
+
+    role: {
+      type: String,
+      enum: ["USER"], // since admin is separate
+      default: "USER",
+    },
+
+    isBlocked: {
+      type: Boolean,
+      default: false,
+    },
+
     isEmailVerified: {
       type: Boolean,
       default: false,
     },
 
-    emailOtp: { type: String },
-    emailOtpExpiry: { type: Date },
-    resetPasswordOtp: { type: String },
-    resetPasswordOtpExpiry: { type: Date },
+    profileImage: {
+      type: String, // store image URL
+    },
 
-    
+    // 📍 Multiple Addresses
+    addresses: [
+      {
+        fullName: String,
+        phoneNo: String,
+        addressLine: String,
+        city: String,
+        state: String,
+        postalCode: String,
+        country: String,
+        isDefault: { type: Boolean, default: false },
+      },
+    ],
+
+    // 🛒 Cart
+    cart: [
+      {
+        product: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Product",
+        },
+        quantity: {
+          type: Number,
+          default: 1,
+        },
+      },
+    ],
+
+    // ❤️ Wishlist
+    wishlist: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product",
+      },
+    ],
+
+    // 🔐 OTP fields
+    emailOtp: String,
+    emailOtpExpiry: Date,
+    resetPasswordOtp: String,
+    resetPasswordOtpExpiry: Date,
   },
   { timestamps: true }
 );
