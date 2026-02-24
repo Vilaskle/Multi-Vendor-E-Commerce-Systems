@@ -147,12 +147,11 @@
 // };
 
 
-
-
 import nodemailer from "nodemailer";
 
 // 🔹 Central OTP Email Sender
-export const sendOtpEmail = async ({
+
+ const sendOtpEmail = async ({
   to,
   otp,
   purpose = "LOGIN",        // LOGIN | REGISTER | RESET_PASSWORD
@@ -239,3 +238,5 @@ export const sendOtpEmail = async ({
     html: htmlTemplate,
   });
 };
+
+export default sendOtpEmail;

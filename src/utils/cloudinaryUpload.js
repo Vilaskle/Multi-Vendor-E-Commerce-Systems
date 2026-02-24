@@ -1,43 +1,23 @@
-// import cloudinary from "../config/cloudinary.js";
-
-// export const uploadToCloudinary = async (buffer, folder) => {
-//   return new Promise((resolve, reject) => {
-//     cloudinary.uploader
-//       .upload_stream(
-//         {
-//           folder,
-//           resource_type: "image",
-//         },
-//         (error, result) => {
-//           if (error){
-//             console.error("CLOUDINARY ERROR:", error);
-//             return reject(error);
-//           } 
-//           resolve(result);
-//         }
-//       )
-//       .end(buffer);
-//   });
-// };
-
 import cloudinary from "../config/cloudinary.js";
+import streamifier from "streamifier";
 
 export const uploadToCloudinary = (buffer, folder) => {
   return new Promise((resolve, reject) => {
-    cloudinary.uploader
-      .upload_stream(
-        {
-          folder,                // vendors/<vendorId>/products
-          resource_type: "image" // signed upload (backend)
-        },
-        (error, result) => {
-          if (error) {
-            console.error("CLOUDINARY UPLOAD ERROR:", error);
-            return reject(error);
-          }
-          resolve(result);
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: folder,          // example: vendors/documents
+        resource_type: "auto",   // 🔥 VERY IMPORTANT (allows PDF)
+      },
+      (error, result) => {
+        if (error) {
+          console.error("CLOUDINARY UPLOAD ERROR:", error);
+          return reject(error);
         }
-      )
-      .end(buffer);
+        resolve(result);
+      }
+    );
+
+    // Convert buffer → stream (needed for memoryStorage)
+    streamifier.createReadStream(buffer).pipe(stream);
   });
 };

@@ -1,20 +1,49 @@
-
 import jwt from "jsonwebtoken";
 
+/*
+  Middleware to verify JWT token
+*/
 export const authMiddleware = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
-  const token = authHeader.split(" ")[1];
-
   try {
+    const authHeader = req.headers.authorization;
+
+    // 1️⃣ Check if token exists
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        success: false,
+        message: "No token provided",
+      });
+    }
+
+    // 2️⃣ Extract token
+    const token = authHeader.split(" ")[1];
+
+    // 3️⃣ Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // contains userId & role
+
+    // 4️⃣ Attach decoded user data to request
+    // Expected: { id, role }
+    req.user = decoded;
+
     next();
-  } catch (err) {
-    return res.status(401).json({ message: "Invalid token" });
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid or expired token",
+    });
   }
+};
+
+/*
+  Middleware to allow only Admin users
+*/
+export const adminOnly = (req, res, next) => {
+  if (!req.user || req.user.role !== "ADMIN") {
+    return res.status(403).json({
+      success: false,
+      message: "Access denied. Admins only.",
+    });
+  }
+
+  next();
 };

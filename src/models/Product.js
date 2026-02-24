@@ -23,6 +23,14 @@ const productSchema = new mongoose.Schema(
 
     colors: { type: [String], required: true },
 
+    //   // ✅ Toggle
+    // isActive: {
+    //   type: Boolean,
+    //   default: true,
+    // },
+
+    
+
     images: [
       {
         url: { type: String, required: true },
@@ -35,6 +43,7 @@ const productSchema = new mongoose.Schema(
       ref: "Vendor",
       required: true,
     },
+
   },
   { timestamps: true }
 );

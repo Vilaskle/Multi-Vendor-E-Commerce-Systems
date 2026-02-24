@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
+
 import { startUnverifiedUserCleanup } from "./scripts/cleanupUnverifiedUsers.js";
 
 

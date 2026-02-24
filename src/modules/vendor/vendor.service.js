@@ -1,72 +1,106 @@
 import Vendor from "../../models/Vendor.js";
 import jwt from "jsonwebtoken";
-import { sendOtpEmail } from "../../services/email/email.service.js";
+import  sendOtpEmail  from "../../services/email/email.service.js";
 import Product from "../../models/Product.js";
 import { uploadToCloudinary } from "../../utils/cloudinaryUpload.js";
 
+/* ============================================================
+   REGISTER VENDOR (Submit Documents → Always PENDING)
+============================================================ */
 export const registerVendorService = async ({
   name,
   email,
   phoneNo,
+  gstNumber,
+  shopLicenseFile,
 }) => {
+  // 🔎 Check Existing Vendor
   const existingVendor = await Vendor.findOne({
-    $or: [{ email }, { phoneNo }],
+    $or: [{ email }, { phoneNo },{gstNumber}],
   });
 
   if (existingVendor) {
     throw new Error("Vendor already registered");
   }
 
+  // ✅ GST Validation (India Format)
+  const gstRegex =
+    /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}Z[A-Z0-9]{1}$/;
+
+  if (!gstRegex.test(gstNumber)) {
+    throw new Error("Invalid GST Number");
+  }
+
+  // ✅ Upload Shop License to Cloudinary
+  const uploadResult = await uploadToCloudinary(
+  shopLicenseFile.buffer,
+  "vendors/documents",
+  shopLicenseFile.mimetype   // 🔥 required
+);
+
+  // ✅ Create Vendor → ALWAYS PENDING
   const vendor = await Vendor.create({
     name,
     email,
     phoneNo,
+    gstNumber,
+    shopLicense: {
+      url: uploadResult.secure_url,
+      public_id: uploadResult.public_id,
+    },
+    status: "PENDING", // 🔴 Admin must approve
   });
 
-  return {
-    id: vendor._id,
-    name: vendor.name,
-    email: vendor.email,
-    status: vendor.status,
-  };
+  return vendor;
 };
 
+/* ============================================================
+   OTP LOGIN → ONLY APPROVED VENDORS
+============================================================ */
 
 // Generate 6-digit OTP
 const generateOtp = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
 
-// STEP 1: REQUEST OTP
+/* STEP 1 → REQUEST OTP */
 export const requestVendorLoginOtpService = async (email) => {
   const vendor = await Vendor.findOne({ email });
 
-  if (!vendor) {
-    throw new Error("Vendor not found");
+  if (!vendor) throw new Error("Vendor not found");
+
+  // 🔐 BLOCK LOGIN IF NOT APPROVED
+  if (vendor.status === "PENDING") {
+    throw new Error("Your verification is under review");
+  }
+
+  if (vendor.status === "REJECTED") {
+    throw new Error("Your vendor request was rejected");
   }
 
   if (vendor.status !== "APPROVED") {
-    throw new Error("Vendor is not approved by admin");
+    throw new Error("Vendor not approved");
   }
 
   const otp = generateOtp();
-  const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+  const expiry = new Date(Date.now() + 5 * 60 * 1000);
 
   vendor.emailOtp = otp;
   vendor.emailOtpExpiry = expiry;
   await vendor.save();
 
-  // await sendVendorEmailOtp(email, otp);
- await sendOtpEmail({ to: email, otp, purpose: "LOGIN", role: "Vendor" });
-
+  await sendOtpEmail({
+    to: email,
+    otp,
+    purpose: "LOGIN",
+    role: "VENDOR",
+  });
 };
 
-// STEP 2: VERIFY OTP
+/* STEP 2 → VERIFY OTP */
 export const verifyVendorLoginOtpService = async (email, otp) => {
   const vendor = await Vendor.findOne({ email });
 
-  if (!vendor) {
-    throw new Error("Vendor not found");
-  }
+  if (!vendor) throw new Error("Vendor not found");
 
   if (
     vendor.emailOtp !== otp ||
@@ -75,14 +109,13 @@ export const verifyVendorLoginOtpService = async (email, otp) => {
     throw new Error("Invalid or expired OTP");
   }
 
-  // Clear OTP
   vendor.emailOtp = null;
   vendor.emailOtpExpiry = null;
   await vendor.save();
 
-  // Generate JWT
+  // ✅ Vendor JWT (NOT user JWT)
   const token = jwt.sign(
-    { vendorId: vendor._id, role: vendor.role },
+    { vendorId: vendor._id, role: "VENDOR" },
     process.env.JWT_SECRET,
     { expiresIn: "1d" }
   );
@@ -98,9 +131,9 @@ export const verifyVendorLoginOtpService = async (email, otp) => {
   };
 };
 
-
-
-// GET PROFILE
+/* ============================================================
+   PROFILE
+============================================================ */
 export const getVendorProfileService = async (vendorId) => {
   const vendor = await Vendor.findById(vendorId).select(
     "-emailOtp -emailOtpExpiry"
@@ -111,7 +144,6 @@ export const getVendorProfileService = async (vendorId) => {
   return vendor;
 };
 
-// UPDATE PROFILE
 export const updateVendorProfileService = async (vendorId, updateData) => {
   const allowedFields = {};
 
@@ -129,9 +161,11 @@ export const updateVendorProfileService = async (vendorId, updateData) => {
   return vendor;
 };
 
-
+/* ============================================================
+   ADD PRODUCT → ONLY APPROVED VENDORS
+============================================================ */
 export const addProductService = async ({
- name,
+  name,
   category,
   productType,
   price,
@@ -141,23 +175,30 @@ export const addProductService = async ({
   vendorId,
   files,
 }) => {
-  try {
-    const images = [];
+  const vendor = await Vendor.findById(vendorId);
 
-    for (const file of files) {
-      const result = await uploadToCloudinary(
-        file.buffer,
-        `vendors/${vendorId}/products`
-      );
+  if (!vendor) throw new Error("Vendor not found");
 
-      images.push({
-        url: result.secure_url,
-        public_id: result.public_id,
-      });
-    }
+  if (vendor.status !== "APPROVED") {
+    throw new Error("Vendor not approved. Cannot add products.");
+  }
 
-    const product = await Product.create({
-      name,
+  const images = [];
+
+  for (const file of files) {
+    const result = await uploadToCloudinary(
+      file.buffer,
+      `vendors/${vendorId}/products`
+    );
+
+    images.push({
+      url: result.secure_url,
+      public_id: result.public_id,
+    });
+  }
+
+  const product = await Product.create({
+    name,
     category,
     productType,
     price,
@@ -166,40 +207,7 @@ export const addProductService = async ({
     colors,
     vendor: vendorId,
     images,
-    });
+  });
 
-    return product;
-  } catch (err) {
-    console.error("SERVICE ERROR (addProduct):", err);
-    throw err; 
-  }
+  return product;
 };
-
-
-
-
-// export const addProductService = async ({
-//   name,
-//   price,
-//   category,
-//   description,
-//   vendorId,
-//   files,
-// }) => {
-//   // Convert uploaded files to image array
-//   const images = files.map((file) => ({
-//     url: file.path,        // Cloudinary URL
-//     public_id: file.filename, // Cloudinary public_id
-//   }));
-
-//   const product = await Product.create({
-//     name,
-//     price,
-//     category,
-//     description,
-//     vendor: vendorId,
-//     images,
-//   });
-
-//   return product;
-// };
