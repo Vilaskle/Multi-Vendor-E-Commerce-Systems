@@ -1,25 +1,50 @@
-
-// import mongoose from "mongoose";
-
-// const userSchema = new mongoose.Schema(
-//   {
-//     name: { type: String, required: true },
-//     phoneNo: { type: String, required: true, unique: true },
-//     email: { type: String, required: true, unique: true },
-//     address: { type: String, required: true },
-
-//     // OTP login fields
-//     emailOtp: { type: String },
-//     emailOtpExpiry: { type: Date },
-
-//     role: { type: String, default: "USER" }
-//   },
-//   { timestamps: true }
-// );
-
-// export default mongoose.model("User", userSchema);
-
 import mongoose from "mongoose";
+
+const addressSchema = new mongoose.Schema(
+  {
+    fullName: {
+      type: String,
+      required: true,
+    },
+
+    phoneNo: {
+      type: String,
+      required: true,
+    },
+
+    email: {
+      type: String,
+      required: true,
+      lowercase: true,
+    },
+
+    addressLine: {
+      type: String,
+      required: true,
+    },
+
+    city: {
+      type: String,
+      required: true,
+    },
+
+    state: {
+      type: String,
+      required: true,
+    },
+
+    pincode: {
+      type: String,
+      required: true,
+    },
+
+    isDefault: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  { timestamps: true }
+);
 
 const userSchema = new mongoose.Schema(
   {
@@ -33,25 +58,28 @@ const userSchema = new mongoose.Schema(
     },
 
     phoneNo: { type: String },
-    address: { type: String },
 
     password: {
       type: String,
       required: true,
-      select: false, // 🔐 never return by default
+      select: false,
     },
-    role: { type: String, default: "USER"},
+
+    role: { type: String, default: "USER" },
+
     isEmailVerified: {
       type: Boolean,
       default: false,
     },
 
-    emailOtp: { type: String },
-    emailOtpExpiry: { type: Date },
-    resetPasswordOtp: { type: String },
-    resetPasswordOtpExpiry: { type: Date },
+    emailOtp: String,
+    emailOtpExpiry: Date,
 
-    
+    resetPasswordToken: String,
+    resetPasswordExpiry: Date,
+
+    // 🏠 ADDRESSES
+    addresses: [addressSchema],
   },
   { timestamps: true }
 );

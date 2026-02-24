@@ -7,14 +7,19 @@ import adminRoutes from "./modules/admin/admin.routes.js";
 const app = express();
 // Middleware to read JSON body
 
-
-app.use(cors({
-  origin:"http://localhost:5173",
-  method:["GET","POST","PUT","DELETE"],
-  Credentials:true
-}));
-
 app.use(express.json());
+
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://unprunable-underbred-shyla.ngrok-free.dev",
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  })
+);
+
 
 app.get("/api/test",(req,res)=>{
   res.json({message:"Backend connected successfully"})
