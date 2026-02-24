@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import dotenv from "dotenv";
 import Admin from "../models/Admin.js";
 
+
 dotenv.config();
 
 const createAdmin = async () => {
