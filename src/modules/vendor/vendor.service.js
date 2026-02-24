@@ -1,6 +1,6 @@
 import Vendor from "../../models/Vendor.js";
 import jwt from "jsonwebtoken";
-import  sendOtpEmail  from "../../services/email/email.service.js";
+import  {sendOtpEmail}  from "../../services/email/email.service.js";
 import Product from "../../models/Product.js";
 import { uploadToCloudinary } from "../../utils/cloudinaryUpload.js";
 

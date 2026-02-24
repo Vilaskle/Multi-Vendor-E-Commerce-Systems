@@ -99,8 +99,8 @@
 
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
-import  sendEmailOtp from "../services/email/email.service.js";
-
+//import  {sendEmailOtp} from "../services/email/email.service.js";
+import { sendOtpEmail } from "../services/email/email.service.js";
 
 const generateOtp = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
@@ -150,7 +150,7 @@ export const requestUserLoginOtpService = async (email) => {
   user.emailOtpExpiry = expiry;
   await user.save();
 
-  await sendEmailOtp(email, otp);
+  await sendOtpEmail(email, otp);
 };
 
 // STEP 2: VERIFY OTP
