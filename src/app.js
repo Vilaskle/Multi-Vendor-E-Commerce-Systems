@@ -76,7 +76,7 @@ app.use(express.json());
 
 /* ================= ROUTES ================= */
 app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
+app.use("/api", userRoutes);
 app.use("/api/vendor", vendorRoutes);
 app.use("/api/admin", adminRoutes);
 
