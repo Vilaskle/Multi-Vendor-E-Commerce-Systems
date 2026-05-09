@@ -22,7 +22,18 @@ getSingleProduct,
  clearCart,
 addToWishlist,
 getWishlist,
- removeFromWishlist} from "./user.controller.js";
+ removeFromWishlist,
+createPayment, verifyPayment,
+getMyOrders,
+cancelOrderItem,
+requestReturn,
+requestExchange,
+getCheckoutSummary,
+saveRefundDetails,
+addReview,
+getProductReviews,
+getHomePage,
+getOrderPolicyController} from "./user.controller.js";
 import { authMiddleware } from "../../middlewares/authMiddleware.js";
 import { isUser } from "../../middlewares/roleMiddleware.js";
 import {
@@ -52,10 +63,27 @@ router.get("/user/products", getProducts);
 router.get("/user/products/:id", getSingleProduct);
 
 // CART ROUTES
+// router.post("/user/cart", authMiddleware, isUser, addToCart);
+// router.get("/user/cart", authMiddleware, isUser, getCart);
+// router.put("/user/cart", authMiddleware, isUser, updateCartItem);
+// // router.delete("/user/cart/:productId", authMiddleware, isUser, removeCartItem);
+// router.delete("/user/cart/item", authMiddleware, isUser, removeCartItem);
+// router.delete("/user/cart", authMiddleware, isUser, clearCart);
+
 router.post("/user/cart", authMiddleware, isUser, addToCart);
 router.get("/user/cart", authMiddleware, isUser, getCart);
-router.put("/user/cart", authMiddleware, isUser, updateCartItem);
-router.delete("/user/cart/:productId", authMiddleware, isUser, removeCartItem);
+router.put(
+  "/user/cart/item/:cartItemId",
+  authMiddleware,
+  isUser,
+  updateCartItem
+);
+router.delete(
+  "/user/cart/item/:cartItemId",
+  authMiddleware,
+  isUser,
+  removeCartItem
+);
 router.delete("/user/cart", authMiddleware, isUser, clearCart);
 
 // WISHLIST ROUTES
@@ -64,5 +92,72 @@ router.get("/user/wishlist", authMiddleware, isUser, getWishlist);
 router.delete("/user/wishlist/:productId", authMiddleware, isUser, removeFromWishlist);
 
 
+router.post(
+  "/user/checkout/summary",
+  authMiddleware,
+  isUser,
+  getCheckoutSummary
+);
+
+// CHECKOUT & PAYMENT
+router.post(
+  "/user/checkout/create-payment",
+  authMiddleware,
+  isUser,
+  createPayment
+);
+
+router.post(
+  "/user/checkout/verify-payment",
+  authMiddleware,
+  isUser,
+  verifyPayment
+);
+
+router.get("/user/orders",authMiddleware,isUser, getMyOrders);
+
+// ================= ORDER ITEM ACTIONS =================
+router.patch(
+  "/user/orders/:orderId/items/:itemId/cancel",
+  authMiddleware,
+  isUser,
+  cancelOrderItem
+);
+
+router.patch(
+  "/user/orders/:orderId/items/:itemId/return",
+  authMiddleware,
+  isUser,
+  requestReturn
+);
+
+
+router.patch(
+  "/user/orders/:orderId/items/:itemId/exchange",
+  authMiddleware,
+  isUser,
+  requestExchange
+);
+
+
+router.patch(
+  "/user/orders/:orderId/items/:itemId/refund-details",
+  authMiddleware,
+  isUser,
+  saveRefundDetails
+);
+
+router.post(
+  "/user/reviews",
+  authMiddleware,
+  isUser,
+  addReview
+);
+
+router.get("/reviews/:productId", getProductReviews);
+
+// router.get("/homepage", getHomePage);
+
+router.get("/order-policy", authMiddleware, isUser,getOrderPolicyController);
 
 export default router;

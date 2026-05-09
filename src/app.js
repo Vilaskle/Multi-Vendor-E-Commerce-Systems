@@ -48,14 +48,13 @@
 
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
+
 
 import authRoutes from "./auth/auth.routes.js";
 import userRoutes from "./modules/user/user.routes.js";
 import vendorRoutes from "./modules/vendor/vendor.routes.js";
 import adminRoutes from "./modules/admin/admin.routes.js";
-
-dotenv.config();
+import homeRoutes from "./modules/home/home.routes.js";
 
 const app = express();
 
@@ -67,6 +66,7 @@ app.use(
       "http://localhost:5174", // Admin panel (PC A)
       "https://semiyearly-theocratically-karen.ngrok-free.dev",
       "https://unprunable-underbred-shyla.ngrok-free.dev",
+      "https://unprunable-underbred-shyla.ngrok-free.dev"
     ],
     credentials: true,
   })
@@ -80,6 +80,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api", userRoutes);
 app.use("/api/vendor", vendorRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api", homeRoutes);
 
 /* ================= HEALTH CHECK ================= */
 app.get("/", (req, res) => {

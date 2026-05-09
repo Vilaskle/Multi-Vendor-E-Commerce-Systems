@@ -135,6 +135,149 @@
 
 // seedProducts();
 
+
+
+
+// import dotenv from "dotenv";
+// dotenv.config();
+
+// import connectDB from "../config/db.js";
+// import cloudinary from "../config/cloudinary.js";
+// import Product from "../models/Product.js";
+
+// import PRODUCTS from "./products.js";
+// import { SIZE_RULES, COLOR_RULES } from "../constants/productRules.js";
+
+// /* ================= CONFIG ================= */
+
+// const VENDOR_ID = "69858ad38586fd100f32fc46"; // replace with real vendor id
+
+// const FALLBACK_IMAGE = {
+//   url: "https://res.cloudinary.com/diq9pfjdj/image/upload/v1771399111/Mens_rha4pa.jpg",
+//   public_id: "fallback-image",
+// };
+
+// /* ================= HELPERS ================= */
+
+// const capitalize = (str) =>
+//   str.charAt(0).toUpperCase() + str.slice(1);
+
+// const getSizes = (category, tags = []) => {
+//   const cat = category.toLowerCase();
+
+//   if (tags.includes("topwear"))
+//     return SIZE_RULES[cat]?.topwear || [];
+
+//   if (tags.includes("bottomwear"))
+//     return SIZE_RULES[cat]?.bottomwear || [];
+
+//   return [];
+// };
+
+// const getColors = (category) =>
+//   COLOR_RULES[category.toLowerCase()] || [];
+
+// /* ================= RATING HELPERS ================= */
+
+// const generateRating = () => {
+//   const rating = Math.random() * (5 - 3) + 3; // 3.0 → 5.0
+//   return Math.round(rating * 10) / 10;        // 1 decimal
+// };
+
+// const generateNumReviews = () => {
+//   return Math.floor(Math.random() * 496) + 5; // 5 → 500
+// };
+
+// /* ================= CLOUDINARY UPLOAD ================= */
+
+// const uploadImageToCloudinary = async (imageUrl, productName, vendorId) => {
+//   try {
+//     const result = await cloudinary.uploader.upload(imageUrl, {
+//       folder: `vendors/${vendorId}/products`,
+//       public_id: productName.replace(/\s+/g, "-").toLowerCase(),
+//       timeout: 60000,
+//     });
+
+//     return {
+//       url: result.secure_url,
+//       public_id: result.public_id,
+//     };
+//   } catch (error) {
+//     console.error(`❌ Image upload failed for: ${productName}`);
+//     return null; // IMPORTANT
+//   }
+// };
+
+// /* ================= SEED FUNCTION ================= */
+
+// const seedProducts = async () => {
+//   try {
+//     await connectDB();
+
+//     await Product.deleteMany();
+//     console.log("🗑️ Old products removed");
+
+//     let successImages = 0;
+//     let fallbackImages = 0;
+
+//     for (const item of PRODUCTS) {
+//       let imageData = await uploadImageToCloudinary(
+//         item.image,
+//         item.name,
+//         VENDOR_ID
+//       );
+
+//       /* ================= FALLBACK IMAGE ================= */
+//       if (!imageData) {
+//         imageData = FALLBACK_IMAGE;
+//         fallbackImages++;
+//       } else {
+//         successImages++;
+//       }
+
+//       await Product.create({
+//         name: item.name,
+
+//         category: capitalize(item.category), // Men / Women / Kids
+//         tags: item.tags || [],
+
+//         price: item.price,
+//         discount: item.discount || 0,
+//         stock: item.stock,
+
+//         sizes: getSizes(item.category, item.tags),
+//         colors: getColors(item.category),
+
+//         /* ================= RATING ================= */
+//         rating: generateRating(),
+//         numReviews: generateNumReviews(),
+
+//         images: [imageData],
+//         vendor: VENDOR_ID,
+//       });
+
+//       console.log(`✅ Saved: ${item.name}`);
+
+//       // ⏳ avoid Cloudinary rate limit
+//       await new Promise((r) => setTimeout(r, 500));
+//     }
+
+//     console.log("🎉 SEED COMPLETED");
+//     console.log(`🖼️ Cloudinary uploads: ${successImages}`);
+//     console.log(`🧩 Fallback images used: ${fallbackImages}`);
+
+//     process.exit();
+//   } catch (error) {
+//     console.error("❌ Seeding failed:", error);
+//     process.exit(1);
+//   }
+// };
+
+// seedProducts();
+
+
+
+
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -147,7 +290,13 @@ import { SIZE_RULES, COLOR_RULES } from "../constants/productRules.js";
 
 /* ================= CONFIG ================= */
 
-const VENDOR_ID = "69858ad38586fd100f32fc46"; // replace with real vendor id
+// ✅ Multiple Vendors (Round Robin)
+const VENDOR_IDS = [
+  "69995d7f00842f7e28831ad9",
+  "699ed69b345591b5f509110c",
+  "699eb227976f40ef6bb8a8e9",
+  "69aa68de5e4825cd6b27f55d",
+];
 
 const FALLBACK_IMAGE = {
   url: "https://res.cloudinary.com/diq9pfjdj/image/upload/v1771399111/Mens_rha4pa.jpg",
@@ -178,7 +327,7 @@ const getColors = (category) =>
 
 const generateRating = () => {
   const rating = Math.random() * (5 - 3) + 3; // 3.0 → 5.0
-  return Math.round(rating * 10) / 10;        // 1 decimal
+  return Math.round(rating * 10) / 10;
 };
 
 const generateNumReviews = () => {
@@ -201,7 +350,7 @@ const uploadImageToCloudinary = async (imageUrl, productName, vendorId) => {
     };
   } catch (error) {
     console.error(`❌ Image upload failed for: ${productName}`);
-    return null; // IMPORTANT
+    return null;
   }
 };
 
@@ -217,11 +366,16 @@ const seedProducts = async () => {
     let successImages = 0;
     let fallbackImages = 0;
 
-    for (const item of PRODUCTS) {
+    for (let i = 0; i < PRODUCTS.length; i++) {
+      const item = PRODUCTS[i];
+
+      // ✅ Round Robin Vendor Assignment
+      const vendorId = VENDOR_IDS[i % VENDOR_IDS.length];
+
       let imageData = await uploadImageToCloudinary(
         item.image,
         item.name,
-        VENDOR_ID
+        vendorId
       );
 
       /* ================= FALLBACK IMAGE ================= */
@@ -235,7 +389,7 @@ const seedProducts = async () => {
       await Product.create({
         name: item.name,
 
-        category: capitalize(item.category), // Men / Women / Kids
+        category: capitalize(item.category),
         tags: item.tags || [],
 
         price: item.price,
@@ -250,10 +404,10 @@ const seedProducts = async () => {
         numReviews: generateNumReviews(),
 
         images: [imageData],
-        vendor: VENDOR_ID,
+        vendor: vendorId,
       });
 
-      console.log(`✅ Saved: ${item.name}`);
+      console.log(`✅ Saved: ${item.name} | 👤 Vendor: ${vendorId}`);
 
       // ⏳ avoid Cloudinary rate limit
       await new Promise((r) => setTimeout(r, 500));

@@ -21,7 +21,25 @@ import {registerUserService,
         addToWishlistService,
         getWishlistService,
         removeFromWishlistService,
+        getMyOrdersService,
+        requestReturnService,
+        cancelOrderItemService,
+        requestExchangeService,
+          addReviewService,
+  getProductReviewsService,
+   saveRefundDetailsService,
+   getHomePageService,
+   getOrderPolicyService 
 } from "./user.service.js";
+
+import {
+  createPaymentService,
+  verifyPaymentService,
+  getCheckoutSummaryService,
+} from "../../services/payment/payment.service.js";
+
+
+
 
 export const registerUser = async (req, res) => {
   try {
@@ -342,11 +360,18 @@ export const getSingleProduct = async (req, res) => {
 /* ================= ADD TO CART ================= */
 export const addToCart = async (req, res) => {
   try {
-    console.log("User ID from JWT:", req.user.userId); // ✅ Verify user ID is present
+    //console.log("User ID from JWT:", req.user.userId); // ✅ Verify user ID is present
     const userId = req.user.userId;
-    const { productId, quantity } = req.body;
+    // const { productId, quantity } = req.body;
+    const {
+      productId,
+      quantity = 1,
+      selectedSize = null,
+      selectedColor = null,
+    } = req.body;
 
-    const cart = await addToCartService(userId, productId, quantity);
+    const cart = await addToCartService(userId, productId, quantity,  selectedSize,
+      selectedColor,);
 
     res.status(200).json({
       success: true,
@@ -369,14 +394,71 @@ export const getCart = async (req, res) => {
   }
 };
 
-/* ================= UPDATE CART ITEM ================= */
+// export const updateCartItem = async (req, res) => {
+//   try {
+//     const { productId, quantity, selectedSize, selectedColor } = req.body;
+
+//     const cart = await updateCartItemService(
+//       req.user.userId,
+//       productId,
+//       quantity,
+//       selectedSize,
+//       selectedColor
+//     );
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Cart updated",
+//       cart,
+//     });
+//   } catch (error) {
+//     res.status(400).json({ success: false, message: error.message });
+//   }
+// };
+
+// export const removeCartItem = async (req, res) => {
+//   try {
+//     const { productId, selectedSize, selectedColor } = req.body;
+
+//     const cart = await removeCartItemService(
+//       req.user.userId,
+//       productId,
+//       selectedSize,
+//       selectedColor
+//     );
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Item removed from cart",
+//       cart,
+//     });
+//   } catch (error) {
+//     res.status(400).json({ success: false, message: error.message });
+//   }
+// };
+
+// /* ================= CLEAR CART ================= */
+// export const clearCart = async (req, res) => {
+//   try {
+//     await clearCartService(req.user.userId);
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Cart cleared",
+//     });
+//   } catch (error) {
+//     res.status(400).json({ success: false, message: error.message });
+//   }
+// };
+
 export const updateCartItem = async (req, res) => {
   try {
-    const { productId, quantity } = req.body;
+   const { quantity } = req.body;
+    const { cartItemId } = req.params;
 
     const cart = await updateCartItemService(
       req.user.userId,
-      productId,
+      cartItemId,
       quantity
     );
 
@@ -385,17 +467,20 @@ export const updateCartItem = async (req, res) => {
       message: "Cart updated",
       cart,
     });
+
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
 };
 
-/* ================= REMOVE CART ITEM ================= */
+
 export const removeCartItem = async (req, res) => {
   try {
+    const { cartItemId } = req.params;
+
     const cart = await removeCartItemService(
       req.user.userId,
-      req.params.productId
+      cartItemId
     );
 
     res.status(200).json({
@@ -403,12 +488,12 @@ export const removeCartItem = async (req, res) => {
       message: "Item removed from cart",
       cart,
     });
+
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
 };
 
-/* ================= CLEAR CART ================= */
 export const clearCart = async (req, res) => {
   try {
     await clearCartService(req.user.userId);
@@ -417,11 +502,11 @@ export const clearCart = async (req, res) => {
       success: true,
       message: "Cart cleared",
     });
+
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
 };
-
 
 
 /* ================= ADD TO WISHLIST ================= */
@@ -468,5 +553,331 @@ export const removeFromWishlist = async (req, res) => {
     });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+export const getCheckoutSummary = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { addressId, from, items } = req.body;
+
+    if (!addressId) {
+      return res.status(400).json({
+        success: false,
+        message: "Address is required",
+      });
+    }
+
+    const summary = await getCheckoutSummaryService({
+      userId,
+      addressId,
+      from,
+      items,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: summary,
+    });
+  } catch (err) {
+    console.error("Checkout Summary Error:", err.message);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Failed to fetch checkout summary",
+    });
+  }
+};
+
+
+
+// ================= CREATE PAYMENT =================
+export const createPayment = async (req, res) => {
+  try {
+    console.log("🔥 CONTROLLER HIT");
+    console.log("🔥 BODY:", req.body);
+    const userId = req.user.userId;
+    const { addressId, from, items } = req.body;
+
+    const data = await createPaymentService({
+      userId,
+      addressId,
+      from,
+      items,
+    });
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+     console.error("❌ CREATE PAYMENT ERROR FULL:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message,
+      stack: error.stack, 
+    });
+  }
+};
+
+// ================= VERIFY PAYMENT =================
+export const verifyPayment = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const {
+      razorpayOrderId,
+      razorpayPaymentId,
+      razorpaySignature,
+       items,          // ✅ ADD THIS
+      from,  
+       paymentMethod, 
+    } = req.body;
+
+    const order = await verifyPaymentService({
+      userId,
+      razorpayOrderId,
+      razorpayPaymentId,
+      razorpaySignature,
+       items,          // ✅ PASS
+      from,  
+       paymentMethod,
+
+    });
+
+   res.status(200).json({
+  success: true,
+  message: "Order placed successfully",
+  orders: order.orders,
+  total: order.total,
+  deliveryCharge: order.deliveryCharge,
+});
+
+  } catch (error) {
+    console.log("VERIFY ERROR:", error.message);
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
+export const getMyOrders = async (req, res) => {
+  try {
+
+    const userId = req.user.userId;
+
+    const orders = await getMyOrdersService(userId);
+
+    res.status(200).json({
+      success: true,
+      orders
+    });
+
+  } catch (error) {
+
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+
+  }
+};
+
+
+
+// ================= CANCEL ITEM =================
+export const cancelOrderItem = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { orderId, itemId } = req.params;
+    const { reason } = req.body;
+
+    const data = await cancelOrderItemService({
+      userId,
+      orderId,
+      itemId,
+      reason
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Item cancelled successfully",
+      data
+    });
+
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+
+// ================= RETURN REQUEST =================
+export const requestReturn = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { orderId, itemId } = req.params;
+   const { reason, refundDetails } = req.body;
+
+    const data = await requestReturnService({
+      userId,
+      orderId,
+      itemId,
+      reason,
+      refundDetails
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Return requested successfully",
+      data
+    });
+
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+
+
+export const requestExchange = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { orderId, itemId } = req.params;
+    const { newSize, newColor, reason } = req.body;
+
+    const data = await requestExchangeService({
+      userId,
+      orderId,
+      itemId,
+      newSize,
+      newColor,
+       reason, 
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Exchange requested successfully",
+      data
+    });
+
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+export const saveRefundDetails = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { orderId, itemId } = req.params;
+    const refundDetails = req.body;
+
+    const data = await saveRefundDetailsService({
+      userId,
+      orderId,
+      itemId,
+      refundDetails,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Refund details saved successfully",
+      data,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
+export const addReview = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const data = await addReviewService({
+      userId,
+      ...req.body,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Review added successfully",
+      data,
+    });
+
+  } catch (error) {
+    console.error("Add Review Error:", error.message);
+
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
+export const getProductReviews = async (req, res) => {
+  try {
+    const reviews = await getProductReviewsService(
+      req.params.productId
+    );
+
+    res.status(200).json({
+      success: true,
+      reviews,
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
+
+export const getHomePage = async (req, res) => {
+  try {
+    const data = await getHomePageService();
+
+    res.status(200).json({
+      success: true,
+      message: "Homepage data fetched successfully",
+      data,
+    });
+  } catch (error) {
+    console.error("HOME PAGE ERROR:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch homepage data",
+    });
+  }
+};
+
+
+export const getOrderPolicyController = async (req, res) => {
+  try {
+    const policy = await getOrderPolicyService();
+
+    return res.status(200).json(policy);
+  } catch (error) {
+    console.error("Error fetching order policy:", error);
+
+    return res.status(500).json({
+      message: "Failed to fetch order policy",
+    });
   }
 };

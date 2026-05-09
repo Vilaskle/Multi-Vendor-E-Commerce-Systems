@@ -12,6 +12,18 @@ const cartItemSchema = new mongoose.Schema(
       ref: "Vendor",
       required: true,
     },
+
+      // ✅ VARIANTS (IMPORTANT)
+    selectedSize: {
+      type: String,
+      default: null,
+    },
+
+    selectedColor: {
+      type: String,
+      default: null,
+    },
+    
     quantity: {
       type: Number,
       required: true,
@@ -22,7 +34,7 @@ const cartItemSchema = new mongoose.Schema(
       required: true, // snapshot price
     },
   },
-  { _id: false }
+  { _id: true }
 );
 
 const cartSchema = new mongoose.Schema(

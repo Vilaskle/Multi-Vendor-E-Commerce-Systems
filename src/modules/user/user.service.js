@@ -6,6 +6,19 @@ import mongoose from "mongoose";
 import { SEARCH_KEYWORD_MAP } from "../../utils/searchMap.js";
 import Cart from "../../models/Cart.js";
 import Wishlist from "../../models/Wishlist.js";
+import OrderGroup from "../../models/OrderGroup.js";
+import Order from "../../models/Order.js";
+import OrderPolicy from "../../models/OrderPolicy.js";
+import Payment from "../../models/Payment.js";
+import { razorpay } from "../../services/payment/payment.gateway.js";
+import Review from "../../models/Review.js";
+import HeroBanner from "../../models/HeroBanner.js";
+import OfferBanner from "../../models/OfferBanner.js";
+import PromotionBanner from "../../models/PromotionBanner.js";
+import Category from "../../models/Category.js";
+import OfferGrid from "../../models/OfferGrid.js";
+import Transaction from "../../models/Transaction.js";
+import Admin from "../../models/Admin.js";
 
 const MAX_ADDRESSES = 5;
 
@@ -13,6 +26,7 @@ const MAX_ADDRESSES = 5;
 import crypto from "node:crypto";
 // import { sendEmailOtp } from "../../services/email/email.service.js";
 import { sendOtpEmail } from "../../services/email/email.service.js";
+import { sendOrderEmail } from "../../services/email/email.service.js";
 
 const generateOtp = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
@@ -560,6 +574,126 @@ export const deleteAddressService = async (
   return user;
 };
 
+// export const fetchProducts = async (query) => {
+//   const {
+//     category,
+//     tag,
+//     search,
+//     minPrice,
+//     maxPrice,
+//     sizes,
+//     colors,
+//     rating,
+//     discount,
+//     isTrending,
+//     sort,
+//     page = 1,
+//     limit = 12,
+//   } = query;
+
+//   const filter = {};
+
+
+// if (category) {
+//   filter.category = new RegExp(`^${category}$`, "i");
+
+//   if (category.toLowerCase() === "kids" && tag !== "schooluniform") {
+//     filter.tags = { $not: /schooluniform/i };
+//   }
+// }
+//   // TAGS (topwear, ethnic, festival...)
+//   if (tag) {
+//   filter.tags = { $in: [new RegExp(`^${tag}$`, "i")] };
+// }
+
+
+//   /* ================= TEXT SEARCH ================= */
+//   let projection = {};
+//   let sortQuery = { createdAt: -1 }; // default
+
+//   // 🔍 SMART SEARCH
+// if (search) {
+//   const keyword = search.toLowerCase();
+
+//   const mappedTags = SEARCH_KEYWORD_MAP[keyword];
+
+//   // Case 1: keyword matches known intent (pants, shirt, saree...)
+//   if (mappedTags) {
+//     filter.tags = {
+//       $in: mappedTags.map((t) => new RegExp(`^${t}$`, "i")),
+//     };
+//   }
+//   // Case 2: fallback to name search
+//   else {
+//     filter.$or = [
+//       { name: { $regex: keyword, $options: "i" } },
+//       { tags: { $regex: keyword, $options: "i" } },
+//     ];
+//   }
+// }
+
+//   // PRICE
+//   if (minPrice || maxPrice) {
+//     filter.price = {};
+//     if (minPrice) filter.price.$gte = Number(minPrice);
+//     if (maxPrice) filter.price.$lte = Number(maxPrice);
+//   }
+
+//   // SIZES
+//   if (sizes) {
+//     filter.sizes = { $in: sizes.split(",") };
+//   }
+
+//   // COLORS
+//   if (colors) {
+//     filter.colors = { $in: colors.split(",") };
+//   }
+
+//   // RATING
+//   if (rating) {
+//     filter.rating = { $gte: Number(rating) };
+//   }
+
+//   // SALE
+
+//   if (discount) {
+//   filter.discount = { $gte: Number(discount) };
+// }
+//   // if (discount) {
+//   //   filter.discount = { $gt: 0 };
+//   // }
+
+//   // TRENDING
+//   if (isTrending) {
+//     filter.isTrending = true;
+//   }
+
+
+//   /* ================= SORT (OVERRIDE IF PROVIDED) ================= */
+//   if (!search) {
+//     if (sort === "price_asc") sortQuery = { price: 1 };
+//     if (sort === "price_desc") sortQuery = { price: -1 };
+//     if (sort === "newest") sortQuery = { createdAt: -1 };
+//   }
+// /* ================= PAGINATION ================= */
+//   const skip = (page - 1) * limit;
+
+//   const [products, total] = await Promise.all([
+//     Product.find(filter)
+//       .sort(sortQuery)
+//       .skip(skip)
+//       .limit(Number(limit)),
+
+//     Product.countDocuments(filter),
+//   ]);
+
+//   return {
+//     products,
+//     totalPages: Math.ceil(total / limit),
+//     currentPage: Number(page),
+//   };
+// };
+
 export const fetchProducts = async (query) => {
   const {
     category,
@@ -578,124 +712,190 @@ export const fetchProducts = async (query) => {
   } = query;
 
   const filter = {};
+  let sortQuery = { createdAt: -1 };
 
-  // CATEGORY (Men / Women / Kids)
-  // CATEGORY (Men / Women / Kids)
-// if (category) {
-//   filter.category = new RegExp(`^${category}$`, "i");
+  /* ================= CATEGORY ================= */
 
-//   // ❌ EXCLUDE school uniform from Kids category
-//   if (
-//     category.toLowerCase() === "kids" &&
-//     query.tag !== "schooluniform"
-//   ) {
-//     filter.tags = { $not: /schooluniform/i };
-//   }
-// }
-
-if (category) {
-  filter.category = new RegExp(`^${category}$`, "i");
-
-  if (category.toLowerCase() === "kids" && tag !== "schooluniform") {
-    filter.tags = { $not: /schooluniform/i };
+  if (category) {
+    filter.category = new RegExp(`^${category}$`, "i");
   }
-}
-  // TAGS (topwear, ethnic, festival...)
+
+  /* ================= TAG ================= */
+
   if (tag) {
-  filter.tags = { $in: [new RegExp(`^${tag}$`, "i")] };
-}
-//  if (tag) {
-//   filter.tags = {
-//     $elemMatch: {
-//       $regex: new RegExp(`^${tag}$`, "i"),
-//     },
-//   };
-// }
-
-  /* ================= TEXT SEARCH ================= */
-  let projection = {};
-  let sortQuery = { createdAt: -1 }; // default
-
-  // 🔍 SMART SEARCH
-if (search) {
-  const keyword = search.toLowerCase();
-
-  const mappedTags = SEARCH_KEYWORD_MAP[keyword];
-
-  // Case 1: keyword matches known intent (pants, shirt, saree...)
-  if (mappedTags) {
     filter.tags = {
-      $in: mappedTags.map((t) => new RegExp(`^${t}$`, "i")),
+      $in: [new RegExp(`^${tag}$`, "i")],
     };
   }
-  // Case 2: fallback to name search
-  else {
-    filter.$or = [
-      { name: { $regex: keyword, $options: "i" } },
-      { tags: { $regex: keyword, $options: "i" } },
-    ];
-  }
-}
 
-  // PRICE
+  /* ================= KIDS SPECIAL ================= */
+
+  // Exclude schooluniform unless explicitly requested
+  if (
+    category?.toLowerCase() === "kids" &&
+    tag?.toLowerCase() !== "schooluniform"
+  ) {
+    filter.tags = {
+      ...(filter.tags || {}),
+      $not: /schooluniform/i,
+    };
+  }
+
+  /* ================= SEARCH ================= */
+
+  if (search) {
+    const keyword = search.toLowerCase().trim();
+
+    const mappedTags = SEARCH_KEYWORD_MAP[keyword];
+
+    // Smart mapped search
+    if (mappedTags) {
+      filter.$and = filter.$and || [];
+
+      filter.$and.push({
+        tags: {
+          $in: mappedTags.map(
+            (t) => new RegExp(`^${t}$`, "i")
+          ),
+        },
+      });
+    }
+
+    // Normal text search
+    else {
+      filter.$and = filter.$and || [];
+
+      filter.$and.push({
+        $or: [
+          {
+            name: {
+              $regex: keyword,
+              $options: "i",
+            },
+          },
+          {
+            tags: {
+              $regex: keyword,
+              $options: "i",
+            },
+          },
+        ],
+      });
+    }
+  }
+
+  /* ================= PRICE ================= */
+
   if (minPrice || maxPrice) {
     filter.price = {};
-    if (minPrice) filter.price.$gte = Number(minPrice);
-    if (maxPrice) filter.price.$lte = Number(maxPrice);
+
+    if (minPrice) {
+      filter.price.$gte = Number(minPrice);
+    }
+
+    if (maxPrice) {
+      filter.price.$lte = Number(maxPrice);
+    }
   }
 
-  // SIZES
+  /* ================= SIZES ================= */
+
   if (sizes) {
-    filter.sizes = { $in: sizes.split(",") };
+    const sizeArray = Array.isArray(sizes)
+      ? sizes
+      : sizes.split(",");
+
+    filter.sizes = {
+      $in: sizeArray,
+    };
   }
 
-  // COLORS
+  /* ================= COLORS ================= */
+
   if (colors) {
-    filter.colors = { $in: colors.split(",") };
+    const colorArray = Array.isArray(colors)
+      ? colors
+      : colors.split(",");
+
+    filter.colors = {
+      $in: colorArray,
+    };
   }
 
-  // RATING
+  /* ================= RATING ================= */
+
   if (rating) {
-    filter.rating = { $gte: Number(rating) };
+    filter.rating = {
+      $gte: Number(rating),
+    };
   }
 
-  // SALE
+  /* ================= DISCOUNT ================= */
 
   if (discount) {
-  filter.discount = { $gte: Number(discount) };
-}
-  // if (discount) {
-  //   filter.discount = { $gt: 0 };
-  // }
+    filter.discount = {
+      $gte: Number(discount),
+    };
+  }
 
-  // TRENDING
-  if (isTrending) {
+  /* ================= TRENDING ================= */
+
+  if (isTrending === "true" || isTrending === true) {
     filter.isTrending = true;
   }
 
+  /* ================= SORT ================= */
 
-  /* ================= SORT (OVERRIDE IF PROVIDED) ================= */
-  if (!search) {
-    if (sort === "price_asc") sortQuery = { price: 1 };
-    if (sort === "price_desc") sortQuery = { price: -1 };
-    if (sort === "newest") sortQuery = { createdAt: -1 };
+  if (sort === "price_asc") {
+    sortQuery = { price: 1 };
   }
-/* ================= PAGINATION ================= */
-  const skip = (page - 1) * limit;
+
+  else if (sort === "price_desc") {
+    sortQuery = { price: -1 };
+  }
+
+  else if (sort === "newest") {
+    sortQuery = { createdAt: -1 };
+  }
+
+  else if (sort === "rating") {
+    sortQuery = { rating: -1 };
+  }
+
+  else if (sort === "discount") {
+    sortQuery = { discount: -1 };
+  }
+
+  /* ================= PAGINATION ================= */
+
+  const currentPage = Number(page) || 1;
+  const perPage = Number(limit) || 12;
+
+  const skip = (currentPage - 1) * perPage;
+
+  /* ================= DEBUG ================= */
+
+  console.log("REQ QUERY =>", query);
+  console.log("MONGODB FILTER =>", JSON.stringify(filter, null, 2));
+
+  /* ================= FETCH ================= */
 
   const [products, total] = await Promise.all([
     Product.find(filter)
       .sort(sortQuery)
       .skip(skip)
-      .limit(Number(limit)),
+      .limit(perPage),
 
     Product.countDocuments(filter),
   ]);
 
+  /* ================= RESPONSE ================= */
+
   return {
     products,
-    totalPages: Math.ceil(total / limit),
-    currentPage: Number(page),
+    totalProducts: total,
+    totalPages: Math.ceil(total / perPage),
+    currentPage,
   };
 };
 
@@ -714,7 +914,8 @@ export const fetchSingleProduct = async (productId) => {
 
 
 /* ================= ADD TO CART ================= */
-export const addToCartService = async (userId, productId, quantity) => {
+export const addToCartService = async (userId, productId, quantity,selectedSize,
+  selectedColor,) => {
   if (quantity < 1) throw new Error("Quantity must be at least 1");
 
   const product = await Product.findById(productId);
@@ -730,7 +931,9 @@ export const addToCartService = async (userId, productId, quantity) => {
   }
 
   const item = cart.items.find(
-    (i) => i.product.toString() === productId
+    (i) => i.product.toString() === productId &&
+      i.selectedSize === selectedSize &&
+      i.selectedColor === selectedColor,
   );
 
   if (item) {
@@ -739,6 +942,8 @@ export const addToCartService = async (userId, productId, quantity) => {
     cart.items.push({
       product: product._id,
       vendor: product.vendor,
+        selectedSize,
+      selectedColor,
       quantity,
       price: product.price, // snapshot
     });
@@ -757,44 +962,66 @@ export const getCartService = async (userId) => {
     .populate("items.product.vendor", "_id name email status");
 };
 
-/* ================= UPDATE CART ITEM ================= */
-export const updateCartItemService = async (userId, productId, quantity) => {
+export const updateCartItemService = async (
+  userId,
+  cartItemId,
+  quantity
+) => {
+
   if (quantity < 1) throw new Error("Invalid quantity");
 
   const cart = await Cart.findOne({ user: userId });
+
   if (!cart) throw new Error("Cart not found");
 
-  const item = cart.items.find(
-    (i) => i.product.toString() === productId
-  );
+  const item = cart.items.id(cartItemId);
 
-  if (!item) throw new Error("Item not in cart");
+  if (!item) throw new Error("Item not found");
 
   item.quantity = quantity;
+
   cart.totalPrice = calculateTotal(cart.items);
 
   await cart.save();
+
   return cart;
 };
 
-/* ================= REMOVE CART ITEM ================= */
-export const removeCartItemService = async (userId, productId) => {
+export const removeCartItemService = async (
+  userId,
+  cartItemId
+) => {
+
   const cart = await Cart.findOne({ user: userId });
+
   if (!cart) throw new Error("Cart not found");
 
+  const item = cart.items.id(cartItemId);
+
+  if (!item) throw new Error("Item not found");
+
   cart.items = cart.items.filter(
-    (i) => i.product.toString() !== productId
+    (item) => item._id.toString() !== cartItemId
   );
 
+
   cart.totalPrice = calculateTotal(cart.items);
+
   await cart.save();
 
   return cart;
 };
 
-/* ================= CLEAR CART ================= */
 export const clearCartService = async (userId) => {
-  await Cart.findOneAndDelete({ user: userId });
+
+  const cart = await Cart.findOne({ user: userId });
+
+  if (!cart) return;
+
+  cart.items = [];
+  cart.totalPrice = 0;
+
+  await cart.save();
 };
 
 /* ================= HELPER ================= */
@@ -844,4 +1071,660 @@ export const removeFromWishlistService = async (userId, productId) => {
 
   await wishlist.save();
   return wishlist;
+};
+
+
+export const getMyOrdersService = async (userId) => {
+  const orderGroups = await OrderGroup.find({ user: userId })
+    .sort({ createdAt: -1 })
+    .populate({
+      path: "orders",
+      populate: {
+        path: "items.product",
+        select: "name images price",
+      },
+    });
+
+  console.log("FINAL ORDER GROUPS:", JSON.stringify(orderGroups, null, 2));
+
+  return orderGroups;
+};
+
+// export const getMyOrdersService = async (userId) => {
+
+//   const orderGroups = await OrderGroup.find({ user: userId })
+//    .populate({
+//   path: "orders",
+//   populate: {
+//     path: "items.product",
+//     select: "name images price",
+//   },
+// })
+//     .sort({ createdAt: -1 });
+
+//   return orderGroups;
+//   };
+
+export const cancelOrderItemService = async ({
+  userId,
+  orderId,
+  itemId,
+  reason,
+}) => {
+  // ✅ 1. Find Order
+  const order = await Order.findOne({
+    _id: orderId,
+    user: userId,
+  });
+
+  if (!order) throw new Error("Order not found");
+
+  // ✅ 2. Find Item
+  const item = order.items.id(itemId);
+  if (!item) throw new Error("Item not found");
+
+  // ❌ Already cancelled
+  if (item.status === "CANCELLED") {
+    throw new Error("Item already cancelled");
+  }
+
+  // ❌ Restriction (your existing rule)
+  if (["SHIPPED", "DELIVERED"].includes(item.status)) {
+    throw new Error("Item cannot be cancelled after shipping");
+  }
+
+  // ✅ Fetch policy from DB
+const policy = await OrderPolicy.findOne();
+
+
+const cancelDays = policy?.cancellationWindowDays || 3; // fallback if not set
+console.log("Cancellation Policy (days):", cancelDays);
+console.log("Item Created At:", item.createdAt);
+// ✅ Calculate days
+const itemDate = new Date(item.createdAt);
+const now = new Date();
+const diffDays = (now - itemDate) / (1000 * 60 * 60 * 24);
+
+// ❌ Apply dynamic restriction
+if (diffDays > cancelDays) {
+  throw new Error(`Cancellation period expired (${cancelDays} days)`);
+}
+
+  // ✅ 3. Calculate refund amount (IN PAISE)
+  const refundAmount = item.price * item.quantity * 100;
+
+  // ✅ 4. Find Payment (IMPORTANT FIX)
+  const payment = await Payment.findOne({
+    orders: orderId,
+    status: "SUCCESS",
+  });
+
+  let refundSuccess = false;
+
+  if (payment && payment.razorpayPaymentId) {
+    try {
+      // ✅ 5. Razorpay Refund
+      const refund = await razorpay.payments.refund(
+        payment.razorpayPaymentId,
+        {
+          amount: refundAmount,
+          speed: "optimum",
+        }
+      );
+
+      // ✅ Save refund details in item
+      item.refundStatus = "COMPLETED";
+      item.refundId = refund.id;
+      item.refundAmount = refundAmount / 100;
+
+      refundSuccess = true;
+
+// 🔥 ADD THIS BLOCK HERE
+const admin = await Admin.findOne({ role: "ADMIN" });
+
+const refundAmountRupees = item.price * item.quantity;
+
+await Transaction.create({
+  actorType: "ADMIN",
+  actorId: admin._id,
+  type: "DEBIT",
+  amount: refundAmountRupees,
+  source: "REFUND",
+  referenceId: order._id,
+});
+
+await Admin.findByIdAndUpdate(admin._id, {
+  $inc: { "wallet.balance": -refundAmountRupees },
+});
+
+    } catch (error) {
+      console.error("Refund Error:", error);
+
+      // fallback
+      item.refundStatus = "PENDING";
+    }
+  } else {
+    console.warn("No payment found, skipping refund");
+    item.refundStatus = "NONE";
+  }
+
+  // ✅ 6. Update Item Status
+  item.status = "CANCELLED";
+  item.cancelReason = reason;
+
+  // ✅ 7. Restore Product Stock
+  const product = await Product.findById(item.product);
+  if (product) {
+    product.stock += item.quantity;
+    await product.save();
+  }
+
+  // // ✅ 8. Update Order Status (optional but good)
+  // const allCancelled = order.items.every(
+  //   (i) => i.status === "CANCELLED"
+  // );
+
+  // if (allCancelled) {
+  //   order.orderStatus = "CANCELLED";
+  // }
+
+  // ✅ 8. Update Order Status
+const allCancelled = order.items.every(
+  (i) => i.status === "CANCELLED"
+);
+
+if (allCancelled) {
+  order.orderStatus = "CANCELLED";
+
+  // 🔥 ADD THIS BLOCK HERE
+  const orderGroup = await OrderGroup.findById(order.orderGroup);
+
+  if (orderGroup && orderGroup.deliveryCharge > 0) {
+
+    const deliveryRefund = orderGroup.deliveryCharge;
+
+    console.log("🚀 Refunding delivery charge:", deliveryRefund);
+
+    // 💳 Refund via Razorpay (if online)
+    if (payment && payment.razorpayPaymentId) {
+      try {
+        await razorpay.payments.refund(payment.razorpayPaymentId, {
+          amount: deliveryRefund * 100, // paise
+        });
+      } catch (err) {
+        console.error("Delivery refund failed:", err);
+      }
+    }
+
+    // 💰 ADMIN WALLET DEBIT
+    const admin = await Admin.findOne({ role: "ADMIN" });
+
+    await Transaction.create({
+      actorType: "ADMIN",
+      actorId: admin._id,
+      type: "DEBIT",
+      amount: deliveryRefund,
+      source: "REFUND",
+      referenceId: order._id,
+    });
+
+    await Admin.findByIdAndUpdate(admin._id, {
+      $inc: { "wallet.balance": -deliveryRefund },
+    });
+  }
+}
+
+  // ✅ 9. Save Order
+  await order.save();
+
+  // ✅ 10. Send Email Notification
+try {
+  const user = await User.findById(userId);
+
+  if (user) {
+    // 📩 CANCEL EMAIL
+   await sendOrderEmail({
+  to: user.email,
+  name: user.name || "User",
+  type: "CANCEL",
+  orderId: order._id.toString().slice(-6),
+  orderDate: order.createdAt.toDateString(),
+  amount: item.price * item.quantity,
+  refundId: item.refundId || "N/A", // ✅ important
+   paymentMethod: order.paymentMethod
+});
+
+  }
+} catch (emailError) {
+  console.error("Email Error:", emailError);
+}
+
+  return {
+    order,
+    refundSuccess,
+    message: refundSuccess
+      ? "Item cancelled and refunded successfully"
+      : "Item cancelled (refund pending)",
+  };
+};
+
+export const requestReturnService = async ({
+  userId,
+  orderId,
+  itemId,
+  reason,
+  refundDetails 
+}) => {
+
+  // ✅ 1. Find Order
+  const order = await Order.findOne({
+    _id: orderId,
+    user: userId
+  });
+
+  if (!order) throw new Error("Order not found");
+
+  // ✅ 2. Find Item
+  const item = order.items.id(itemId);
+  if (!item) throw new Error("Item not found");
+
+  // ❌ Only delivered items can be returned
+  if (item.status !== "DELIVERED") {
+    throw new Error("Return allowed only after delivery");
+  }
+
+  // ❌ Already requested
+  if (item.status === "RETURN_REQUESTED") {
+    throw new Error("Return already requested");
+  }
+
+  
+
+  // ✅ 3. Fetch Policy
+  const policy = await OrderPolicy.findOne();
+  const returnDays = policy?.returnWindowDays || 7;
+
+  // ✅ 4. Check return window (based on delivery date or createdAt fallback)
+  const baseDate = item.deliveredAt || item.createdAt;
+  const now = new Date();
+  const diffDays = (now - new Date(baseDate)) / (1000 * 60 * 60 * 24);
+
+  if (diffDays > returnDays) {
+    throw new Error(`Return window expired (${returnDays} days)`);
+  }
+
+  // ✅ 5. Update Item
+  item.status = "RETURN_REQUESTED";
+  item.returnReason = reason;
+
+  // ✅ CHECK PAYMENT METHOD
+if (order.paymentMethod === "COD") {
+
+  if (!refundDetails) {
+    throw new Error("Refund details required for COD orders");
+  }
+
+  // ✅ STORE REFUND DETAILS
+  item.refundDetails = refundDetails;
+  item.refundStatus = "PENDING";
+
+} else {
+  // ONLINE PAYMENT
+  item.refundStatus = "PENDING"; // Razorpay refund later
+}
+
+  await order.save();
+
+  // ✅ 6. Populate for email
+  await order.populate("items.product");
+
+  // ✅ 7. Send Email
+  try {
+    const user = await User.findById(userId);
+    console.log("USER EMAIL:", user?.email);
+
+    if (user) {
+      await sendOrderEmail({
+        to: user.email,
+        name: user.name || "User",
+        type: "RETURN_REQUESTED",
+        orderId: order._id.toString().slice(-6),
+        productName: item.product?.name,
+        quantity: item.quantity,
+        reason,
+         refundDetails: item.refundDetails
+      });
+    }
+  } catch (err) {
+    console.error("Return Email Error:", err);
+  }
+
+  return order;
+};
+
+
+export const requestExchangeService = async ({
+  userId,
+  orderId,
+  itemId,
+  newSize,
+  newColor,
+  reason,
+}) => {
+
+  /* ================= 1. FIND ORDER ================= */
+  const order = await Order.findOne({
+    _id: orderId,
+    user: userId,
+  });
+
+  if (!order) throw new Error("Order not found");
+
+  /* ================= 2. FIND ITEM ================= */
+  const item = order.items.id(itemId);
+  if (!item) throw new Error("Item not found");
+
+  /* ================= 3. VALIDATIONS ================= */
+
+  if (item.status !== "DELIVERED") {
+    throw new Error("Exchange allowed only after delivery");
+  }
+
+  if (item.exchangeStatus !== "NONE") {
+    throw new Error("Exchange already processed/requested");
+  }
+
+  /* ================= 4. VALIDATE REASON ================= */
+  if (!reason || reason.trim().length < 3) {
+    throw new Error("Please provide a valid reason");
+  }
+
+  /* ================= 5. WINDOW CHECK ================= */
+  const policy = await OrderPolicy.findOne();
+  const exchangeDays = policy?.exchangeWindowDays || 7;
+
+  const baseDate = item.deliveredAt || item.createdAt;
+
+  const diffDays =
+    (new Date() - new Date(baseDate)) / (1000 * 60 * 60 * 24);
+
+  if (diffDays > exchangeDays) {
+    throw new Error(`Exchange window expired (${exchangeDays} days)`);
+  }
+
+  /* ================= 6. VALIDATE INPUT ================= */
+  if (!newSize && !newColor) {
+    throw new Error("Select size or color");
+  }
+
+  if (
+    (newSize || item.selectedSize) === item.selectedSize &&
+    (newColor || item.selectedColor) === item.selectedColor
+  ) {
+    throw new Error("Select different variant");
+  }
+
+  /* ================= 7. LOAD PRODUCT ================= */
+  await order.populate("items.product");
+
+  const product = item.product;
+
+  if (!product) {
+    throw new Error("Product no longer available");
+  }
+
+  /* ================= 8. VALIDATE VARIANT ================= */
+
+  // ✅ Validate size
+  if (newSize && !product.sizes.includes(newSize)) {
+    throw new Error("Invalid size selected");
+  }
+
+  // ✅ Validate color
+  if (newColor && !product.colors.includes(newColor)) {
+    throw new Error("Invalid color selected");
+  }
+
+  // ✅ Check stock
+  if (product.stock !== undefined && product.stock <= 0) {
+    throw new Error("Product is out of stock");
+  }
+
+  /* ================= 9. UPDATE EXISTING ITEM ================= */
+
+  item.exchangeStatus = "REQUESTED";
+  item.status = "EXCHANGE_REQUESTED";
+
+  item.exchangeRequest = {
+    newSize: newSize ?? item.selectedSize,
+    newColor: newColor ?? item.selectedColor,
+    reason,
+    requestedAt: new Date(),
+  };
+
+  item.exchangeRequestedAt = new Date();
+
+  await order.save();
+
+  /* ================= 10. EMAIL ================= */
+  try {
+    const user = await User.findById(userId);
+
+    if (user) {
+      await sendOrderEmail({
+        to: user.email,
+        name: user.name || "User",
+        type: "EXCHANGE_REQUESTED",
+        orderId: order._id.toString().slice(-6),
+        productName: product?.name,
+        oldSize: item.selectedSize,
+        newSize: item.exchangeRequest.newSize,
+        oldColor: item.selectedColor,
+        newColor: item.exchangeRequest.newColor,
+      });
+    }
+  } catch (err) {
+    console.error("Email error:", err);
+  }
+
+  return order;
+};
+
+export const saveRefundDetailsService = async ({
+  userId,
+  orderId,
+  itemId,
+  refundDetails,
+}) => {
+  const order = await Order.findOne({
+    _id: orderId,
+    user: userId,
+  });
+
+  if (!order) throw new Error("Order not found");
+
+  const item = order.items.id(itemId);
+  if (!item) throw new Error("Item not found");
+
+  // ❌ Only allow for COD
+  if (order.paymentMethod !== "COD") {
+    throw new Error("Refund details only required for COD orders");
+  }
+
+  // ❌ Only after return requested
+  if (item.status !== "RETURN_REQUESTED") {
+    throw new Error("Refund details can be added only after return request");
+  }
+
+  // ✅ Save details
+  item.refundDetails = refundDetails;
+  item.refundStatus = "PENDING";
+
+  await order.save();
+
+  return order;
+};
+
+
+export const addReviewService = async ({
+  userId,
+  productId,
+  orderId,
+  orderItemId,
+  rating,
+  comment,
+}) => {
+
+  /* ================= VALIDATE INPUT ================= */
+  if (!productId || !orderId || !orderItemId) {
+    throw new Error("Missing required fields");
+  }
+
+  if (!rating || rating < 1 || rating > 5) {
+    throw new Error("Rating must be between 1 and 5");
+  }
+
+  /* ================= FIND ORDER ================= */
+  const order = await Order.findOne({
+    _id: orderId,
+    user: userId,
+  });
+
+  if (!order) {
+    throw new Error("Order not found");
+  }
+
+  /* ================= FIND ITEM ================= */
+  const item = order.items.id(orderItemId);
+
+  if (!item) {
+    throw new Error("Order item not found");
+  }
+
+  /* ================= VALIDATIONS ================= */
+
+  // product match
+  if (item.product.toString() !== productId) {
+    throw new Error("Product mismatch");
+  }
+
+  // must be delivered
+  if (item.status !== "DELIVERED") {
+    throw new Error("Only delivered items can be reviewed");
+  }
+
+  // prevent duplicate
+  if (item.reviewed) {
+    throw new Error("Already reviewed");
+  }
+
+  // prevent return items
+  if (
+    ["RETURN_REQUESTED", "RETURN_APPROVED", "REFUNDED"].includes(item.status)
+  ) {
+    throw new Error("Cannot review returned items");
+  }
+
+  /* ================= CREATE REVIEW ================= */
+  const review = await Review.create({
+    user: userId,
+    product: productId,
+    order: orderId,
+    orderItemId,
+    rating,
+    comment,
+  });
+
+  /* ================= MARK ITEM AS REVIEWED ================= */
+  item.reviewed = true;
+  await order.save();
+
+  /* ================= UPDATE PRODUCT RATING ================= */
+  const stats = await Review.aggregate([
+    { $match: { product: review.product } },
+    {
+      $group: {
+        _id: "$product",
+        avgRating: { $avg: "$rating" },
+        total: { $sum: 1 },
+      },
+    },
+  ]);
+
+  await Product.findByIdAndUpdate(productId, {
+    rating: stats[0].avgRating,
+    numReviews: stats[0].total,
+  });
+
+  return review;
+};
+
+
+export const getProductReviewsService = async (productId) => {
+
+  const reviews = await Review.find({
+    product: productId,
+  })
+    .populate("user", "name")
+    .sort({ createdAt: -1 });
+
+  return reviews;
+};
+
+
+
+export const getHomePageService = async () => {
+  const now = new Date();
+
+  // Fetch all in parallel 🚀
+  const [
+    heroBanners,
+    offerBanners,
+    promotionBanners,
+    categories,
+    offerGrid,
+  ] = await Promise.all([
+    HeroBanner.find({ isActive: true }).sort({ displayOrder: 1 }),
+
+    OfferBanner.find({
+      isActive: true,
+      startDate: { $lte: now },
+      endDate: { $gte: now },
+    }).sort({ displayOrder: 1 }),
+
+    PromotionBanner.find({
+      isActive: true,
+      startDate: { $lte: now },
+      endDate: { $gte: now },
+    }).sort({ displayOrder: 1 }),
+
+    Category.find({ isActive: true }).sort({ displayOrder: 1 }),
+
+    OfferGrid.find({ isActive: true }).sort({ displayOrder: 1 }),
+  ]);
+
+  return {
+    heroBanners,
+    offerBanners,
+    promotionBanners,
+    categories,
+    offerGrid,
+  };
+};
+
+
+
+export const getOrderPolicyService = async () => {
+  // assuming only one policy document exists
+  const policy = await OrderPolicy.findOne().lean();
+
+  if (!policy) {
+    throw new Error("Order policy not found");
+  }
+
+  return {
+    cancellationWindowDays: policy.cancellationWindowDays,
+    returnWindowDays: policy.returnWindowDays,
+    exchangeWindowDays: policy.exchangeWindowDays,
+  };
 };

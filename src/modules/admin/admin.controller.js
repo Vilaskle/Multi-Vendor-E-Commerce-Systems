@@ -193,7 +193,9 @@
 //   approveVendorService,
 //   rejectVendorService,
 // } from "./admin.service.js";
-import { adminLoginService } from "./admin.service.js";
+
+
+import { adminLoginService, approveReturnService,rejectReturnService,refundReturnService,shipExchangeService,settleVendor} from "./admin.service.js";
 // import { getAllUsersByAdminService } from "./admin.service.js";
 export const adminLogin = async (req, res) => {
   try {
@@ -215,6 +217,113 @@ export const adminLogin = async (req, res) => {
     });
   } catch (error) {
     return res.status(401).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const approveReturn = async (req, res) => {
+  try {
+    const { orderId, itemId } = req.params;
+
+    const data = await approveReturnService({ orderId, itemId });
+
+    res.status(200).json({
+      success: true,
+      message: "Return approved & refunded",
+      data,
+    });
+
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
+export const rejectReturn = async (req, res) => {
+  try {
+    const { orderId, itemId } = req.params;
+    const { reason } = req.body; // optional
+
+    const data = await rejectReturnService({
+      orderId,
+      itemId,
+      reason
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Return rejected successfully",
+      data,
+    });
+
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const refundReturn = async (req, res) => {
+  try {
+    const { orderId, itemId } = req.params;
+
+    const data = await refundReturnService({ orderId, itemId });
+
+    res.status(200).json({
+      success: true,
+      message: "Refund processed successfully",
+      data,
+    });
+
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const shipExchange = async (req, res) => {
+  try {
+    const { orderId, itemId } = req.params;
+
+    const data = await shipExchangeService({ orderId, itemId });
+
+    res.status(200).json({
+      success: true,
+      message: "Exchange item shipped successfully",
+      data,
+    });
+
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ✅ Vendor payout
+export const settleVendorController = async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+
+    const data = await settleVendor({ vendorId });
+
+    res.status(200).json({
+      success: true,
+      message: "Vendor paid successfully",
+      data,
+    });
+
+  } catch (error) {
+    res.status(400).json({
       success: false,
       message: error.message,
     });
