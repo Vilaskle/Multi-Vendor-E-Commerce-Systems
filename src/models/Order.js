@@ -193,7 +193,7 @@ deliveryCharge: {
   
   
 
-}, { timestamps: true }),
+}, { timestamps: true });
 
 
 export default mongoose.model("Order", orderSchema);
