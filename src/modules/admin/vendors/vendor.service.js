@@ -1,14 +1,13 @@
 import Vendor from "../../../models/Vendor.js";
 import Product from "../../../models/Product.js";
+import { sendVendorStatusEmail } from "../../../services/email/email.service.js";
 
-// Get all vendors
+// ─── Get all vendors ──────────────────────────────────────────────────────────
 export const getAllVendorsService = async (query) => {
   const { search, page = 1, limit = 10 } = query;
 
   const filter = search
-    ? {
-        businessName: { $regex: search, $options: "i" },
-      }
+    ? { name: { $regex: search, $options: "i" } }
     : {};
 
   return await Vendor.find(filter)
@@ -17,12 +16,12 @@ export const getAllVendorsService = async (query) => {
     .sort({ createdAt: -1 });
 };
 
-// Get vendor by ID
+// ─── Get vendor by ID ─────────────────────────────────────────────────────────
 export const getVendorByIdService = async (id) => {
   return await Vendor.findById(id);
 };
 
-// Update vendor
+// ─── Update vendor ────────────────────────────────────────────────────────────
 export const updateVendorService = async (id, data) => {
   return await Vendor.findByIdAndUpdate(id, data, {
     new: true,
@@ -30,42 +29,37 @@ export const updateVendorService = async (id, data) => {
   });
 };
 
-// Delete vendor
+// ─── Delete vendor ────────────────────────────────────────────────────────────
 export const deleteVendorService = async (id) => {
   return await Vendor.findByIdAndDelete(id);
 };
 
-// Block / Unblock vendor
+// ─── Block / Unblock vendor ───────────────────────────────────────────────────
 export const toggleVendorStatusService = async (id) => {
   const vendor = await Vendor.findById(id);
-
   if (!vendor) return null;
 
   vendor.isBlocked = !vendor.isBlocked;
-
   await vendor.save();
 
   return vendor;
 };
 
-//APPROVE/REJECT 
-export const approveVendorService = async (id, status) => {
+// ─── Approve / Reject vendor ──────────────────────────────────────────────────
+export const approveVendorService = async (id, status, reason = "") => {
   if (!["APPROVED", "REJECTED"].includes(status)) {
     throw new Error("Invalid status. Use APPROVED or REJECTED");
   }
 
   const vendor = await Vendor.findById(id);
+  if (!vendor) throw new Error("Vendor not found");
 
-  if (!vendor) {
-    throw new Error("Vendor not found");
-  }
-
-  // ✅ If already same status → don't throw error
+  // already same status — no change needed
   if (vendor.status === status) {
     return { alreadyUpdated: true, vendor };
   }
 
-  // ✅ Update status
+  // update fields
   vendor.status = status;
 
   if (status === "APPROVED") {
@@ -74,11 +68,30 @@ export const approveVendorService = async (id, status) => {
   }
 
   if (status === "REJECTED") {
-    vendor.rejectionReason = "Rejected by Admin";
+    vendor.rejectionReason = reason || "Documents could not be verified";
     vendor.approvedAt = null;
   }
 
+  // save first — then send email
   await vendor.save();
+
+  // send email after save is successful
+  if (status === "APPROVED") {
+    await sendVendorStatusEmail({
+      to: vendor.email,
+      vendorName: vendor.name,
+      status: "APPROVED",
+    });
+  }
+
+  if (status === "REJECTED") {
+    await sendVendorStatusEmail({
+      to: vendor.email,
+      vendorName: vendor.name,
+      status: "REJECTED",
+      reason: vendor.rejectionReason,
+    });
+  }
 
   return { alreadyUpdated: false, vendor };
 };

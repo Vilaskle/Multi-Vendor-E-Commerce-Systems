@@ -373,3 +373,171 @@ ${
     html,
   });
 };
+
+
+// ─── ADD THIS AT BOTTOM OF email.service.js ───────────────────────────────────
+// Vendor status notification emails
+export const sendVendorStatusEmail = async ({ to, vendorName, status, reason = "" }) => {
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+
+  const templates = {
+    // Case 1: vendor just registered → under review
+    UNDER_REVIEW: {
+      subject: "Your Vendor Application is Under Review",
+      color: "#f59e0b",
+      icon: "⏳",
+      title: "Application Under Review",
+      body: `
+        <p style="color: #555; font-size: 15px;">
+          Thank you for registering as a vendor on our platform.
+        </p>
+        <p style="color: #555; font-size: 15px;">
+          Your application and documents have been received successfully.
+          Our admin team will verify your details and get back to you shortly.
+        </p>
+        <div style="
+          background: #fef3c7;
+          border-left: 4px solid #f59e0b;
+          padding: 14px 18px;
+          border-radius: 4px;
+          margin: 20px 0;
+        ">
+          <p style="margin: 0; color: #92400e; font-size: 14px;">
+            ⏱️ Verification usually takes <strong>1–2 business days</strong>.
+            You will receive an email once your account is reviewed.
+          </p>
+        </div>
+        <p style="color: #555; font-size: 14px;">
+          Please do not attempt to login until you receive an approval email.
+        </p>
+      `,
+    },
+
+    // Case 2: admin approved the vendor
+    APPROVED: {
+      subject: "🎉 Congratulations! Your Vendor Account is Approved",
+      color: "#22c55e",
+      icon: "✅",
+      title: "Account Approved",
+      body: `
+        <p style="color: #555; font-size: 15px;">
+          Great news! Your vendor account has been <strong>successfully approved</strong>
+          by our admin team.
+        </p>
+        <div style="
+          background: #f0fdf4;
+          border-left: 4px solid #22c55e;
+          padding: 14px 18px;
+          border-radius: 4px;
+          margin: 20px 0;
+        ">
+          <p style="margin: 0; color: #166534; font-size: 14px;">
+            ✅ You can now <strong>login to your vendor panel</strong> and start
+            listing your products.
+          </p>
+        </div>
+        <p style="color: #555; font-size: 14px;">
+          You can login using your registered email address via OTP.
+        </p>
+        <div style="text-align: center; margin: 25px 0;">
+          <a href="${process.env.VENDOR_PANEL_URL || "#"}"
+             style="
+               display: inline-block;
+               padding: 14px 28px;
+               background-color: #22c55e;
+               color: #ffffff;
+               text-decoration: none;
+               border-radius: 6px;
+               font-size: 16px;
+               font-weight: bold;
+             ">
+            Login to Vendor Panel
+          </a>
+        </div>
+      `,
+    },
+
+    // Case 3: admin rejected the vendor
+    REJECTED: {
+      subject: "Update on Your Vendor Application",
+      color: "#ef4444",
+      icon: "❌",
+      title: "Application Not Approved",
+      body: `
+        <p style="color: #555; font-size: 15px;">
+          Thank you for your interest in becoming a vendor on our platform.
+        </p>
+        <p style="color: #555; font-size: 15px;">
+          After reviewing your application and documents, we are unable to
+          approve your vendor account at this time.
+        </p>
+        ${
+          reason
+            ? `
+          <div style="
+            background: #fef2f2;
+            border-left: 4px solid #ef4444;
+            padding: 14px 18px;
+            border-radius: 4px;
+            margin: 20px 0;
+          ">
+            <p style="margin: 0 0 6px; color: #991b1b; font-size: 14px; font-weight: bold;">
+              Reason for rejection:
+            </p>
+            <p style="margin: 0; color: #991b1b; font-size: 14px;">
+              ${reason}
+            </p>
+          </div>
+        `
+            : ""
+        }
+        <p style="color: #555; font-size: 14px;">
+          If you believe this is a mistake or would like to re-apply with
+          corrected documents, please contact our support team.
+        </p>
+      `,
+    },
+  };
+
+  const template = templates[status];
+  if (!template) throw new Error(`Invalid vendor email status: ${status}`);
+
+  const htmlTemplate = `
+    <div style="font-family: Arial, sans-serif; background-color: #f4f6f8; padding: 30px;">
+      <div style="max-width: 520px; margin: auto; background: #ffffff; padding: 25px; border-radius: 8px;">
+
+        <div style="text-align: center; margin-bottom: 20px;">
+          <span style="font-size: 40px;">${template.icon}</span>
+          <h2 style="color: ${template.color}; margin: 10px 0 0;">
+            ${template.title}
+          </h2>
+        </div>
+
+        <p style="color: #555; font-size: 15px;">
+          Hello <strong>${vendorName}</strong>,
+        </p>
+
+        ${template.body}
+
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+
+        <p style="color: #777; font-size: 13px; text-align: center;">
+          © ${new Date().getFullYear()} Multi-Vendor E-Commerce Platform
+        </p>
+      </div>
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from: `"Multi-Vendor Platform" <${process.env.EMAIL_USER}>`,
+    to,
+    subject: template.subject,
+    html: htmlTemplate,
+  });
+};

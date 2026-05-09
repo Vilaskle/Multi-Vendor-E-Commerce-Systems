@@ -133,14 +133,15 @@ export const toggleVendorStatus = async (req, res) => {
 
 
 // APPRROVE/REJECT
+// src/modules/admin/vendors/vendor.controller.js
 export const approveVendor = async (req, res) => {
   try {
     const result = await approveVendorService(
       req.params.id,
-      req.body.status
+      req.body.status,
+      req.body.reason  // ← add this
     );
 
-    // ✅ If already approved/rejected
     if (result.alreadyUpdated) {
       return res.status(200).json({
         success: true,
@@ -149,19 +150,16 @@ export const approveVendor = async (req, res) => {
       });
     }
 
-    // ✅ Fresh approval/rejection
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: `Vendor ${req.body.status.toLowerCase()} successfully`,
       data: result.vendor,
     });
-
   } catch (error) {
     console.error("APPROVAL ERROR:", error.message);
-
-    res.status(400).json({
+    return res.status(400).json({
       success: false,
-      message: error.message, // return real reason
+      message: error.message,
     });
   }
 };

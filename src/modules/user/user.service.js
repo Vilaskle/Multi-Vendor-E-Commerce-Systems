@@ -20,6 +20,7 @@ import OfferGrid from "../../models/OfferGrid.js";
 import Transaction from "../../models/Transaction.js";
 import Admin from "../../models/Admin.js";
 
+
 const MAX_ADDRESSES = 5;
 
 
@@ -1727,4 +1728,28 @@ export const getOrderPolicyService = async () => {
     returnWindowDays: policy.returnWindowDays,
     exchangeWindowDays: policy.exchangeWindowDays,
   };
+};
+
+
+
+
+
+export const createOrderService = async (data, userId) => {
+  const order = new Order({
+    user: userId,
+    items: data.items,
+    totalAmount: data.totalAmount,
+
+    // 🔥 ADD HERE
+    trackingHistory: [
+      {
+        status: "PLACED",
+        message: "Your order has been placed",
+      },
+    ],
+  });
+
+  await order.save();
+
+  return order;
 };

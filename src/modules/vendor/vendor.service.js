@@ -1,11 +1,12 @@
 import Vendor from "../../models/Vendor.js";
+import Order from "../../models/Order.js";
 import jwt from "jsonwebtoken";
-import  {sendOtpEmail}  from "../../services/email/email.service.js";
+import  {sendOtpEmail,sendVendorStatusEmail }  from "../../services/email/email.service.js";
 import Product from "../../models/Product.js";
 import { uploadToCloudinary } from "../../utils/cloudinaryUpload.js";
 
 /* ============================================================
-   REGISTER VENDOR (Submit Documents → Always PENDING)
+   REGISTER VENDOR (NO OTP – ALWAYS PENDING)
 ============================================================ */
 export const registerVendorService = async ({
   name,
@@ -14,16 +15,14 @@ export const registerVendorService = async ({
   gstNumber,
   shopLicenseFile,
 }) => {
-  // 🔎 Check Existing Vendor
   const existingVendor = await Vendor.findOne({
-    $or: [{ email }, { phoneNo },{gstNumber}],
+    $or: [{ email }, { phoneNo }, { gstNumber }],
   });
 
   if (existingVendor) {
     throw new Error("Vendor already registered");
   }
 
-  // ✅ GST Validation (India Format)
   const gstRegex =
     /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}Z[A-Z0-9]{1}$/;
 
@@ -31,14 +30,12 @@ export const registerVendorService = async ({
     throw new Error("Invalid GST Number");
   }
 
-  // ✅ Upload Shop License to Cloudinary
   const uploadResult = await uploadToCloudinary(
-  shopLicenseFile.buffer,
-  "vendors/documents",
-  shopLicenseFile.mimetype   // 🔥 required
-);
+    shopLicenseFile.buffer,
+    "vendors/documents",
+    shopLicenseFile.mimetype
+  );
 
-  // ✅ Create Vendor → ALWAYS PENDING
   const vendor = await Vendor.create({
     name,
     email,
@@ -48,12 +45,18 @@ export const registerVendorService = async ({
       url: uploadResult.secure_url,
       public_id: uploadResult.public_id,
     },
-    status: "PENDING", // 🔴 Admin must approve
+    status: "PENDING",
   });
 
+  // ── ADD THIS ONE LINE ──────────────────────────────────────────────────────
+  await sendVendorStatusEmail({
+    to: email,
+    vendorName: name,
+    status: "UNDER_REVIEW",
+  });
+  // ──────────────────────────────────────────────────────────────────────────
   return vendor;
 };
-
 /* ============================================================
    OTP LOGIN → ONLY APPROVED VENDORS
 ============================================================ */
@@ -210,4 +213,78 @@ export const addProductService = async ({
   });
 
   return product;
+};
+
+
+export const getVendorWalletService = async (vendorId) => {
+
+  const vendor = await Vendor.findById(vendorId);
+
+  if (!vendor) {
+    throw new Error("Vendor not found");
+  }
+
+  const orders = await Order.find({
+    "items.vendor": vendorId,
+  }).populate("items.product");
+
+  let total = 0;
+  let paid = 0;
+  let pending = 0;
+
+  const transactions = [];
+
+  for (const order of orders) {
+
+    for (const item of order.items) {
+
+      if (item.vendor.toString() !== vendorId.toString()) {
+        continue;
+      }
+
+      const itemAmount =
+        item.vendorAmount ||
+        (item.price * item.quantity * 0.9);
+
+      total += itemAmount;
+
+      if (item.isSettled) {
+        paid += itemAmount;
+      } else {
+        pending += itemAmount;
+      }
+
+      transactions.push({
+        date:
+          item.settledAt ||
+          item.deliveredAt ||
+          order.createdAt,
+
+        productName:
+          item.product?.name || "Product",
+
+        quantity:
+          item.quantity || 1,
+
+        orderId:
+          order._id,
+
+        status:
+          item.isSettled
+            ? "PAID"
+            : "PENDING",
+
+        amount:
+          itemAmount,
+      });
+    }
+  }
+
+  return {
+    balance: vendor.wallet?.balance || 0,
+    total,
+    paid,
+    pending,
+    transactions,
+  };
 };

@@ -64,9 +64,8 @@ app.use(
     origin: [
       "http://localhost:5173", // Vendor panel (PC A)
       "http://localhost:5174", // Admin panel (PC A)
-      "https://semiyearly-theocratically-karen.ngrok-free.dev",
-      "https://unprunable-underbred-shyla.ngrok-free.dev",
-      "https://unprunable-underbred-shyla.ngrok-free.dev"
+      "https://semiyearly-theocratically-karen.ngrok-free.dev", //sidh
+      "https://unprunable-underbred-shyla.ngrok-free.dev", //shar
     ],
     credentials: true,
   })
@@ -77,7 +76,7 @@ app.use(express.json());
 
 /* ================= ROUTES ================= */
 app.use("/api/auth", authRoutes);
-app.use("/api", userRoutes);
+app.use("/api/user", userRoutes);
 app.use("/api/vendor", vendorRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api", homeRoutes);

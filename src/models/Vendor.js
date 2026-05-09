@@ -87,6 +87,7 @@ wallet: {
     emailOtpExpiry: { type: Date },
   },
   
+  
   { timestamps: true }
 );
 

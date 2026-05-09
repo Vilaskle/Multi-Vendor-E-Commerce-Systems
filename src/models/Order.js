@@ -3,11 +3,13 @@ import mongoose from "mongoose";
 
 const orderItemSchema = new mongoose.Schema({
 
+
   product: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Product",
-    required: true
+    required: true,
   },
+
 
   vendor: {
     type: mongoose.Schema.Types.ObjectId,
@@ -175,13 +177,13 @@ deliveryCharge: {
     enum: ["ONLINE", "COD"],
     default: "ONLINE"
   },
-
+  
   orderStatus: {
     type: String,
     enum: ["PLACED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"],
     default: "PLACED"
   },
-
+  
   razorpayOrderId: String,
 
   from: {
@@ -191,7 +193,7 @@ deliveryCharge: {
   
   
 
-}, { timestamps: true });
+}, { timestamps: true }),
 
 
 export default mongoose.model("Order", orderSchema);

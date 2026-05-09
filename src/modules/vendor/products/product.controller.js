@@ -2,8 +2,9 @@ import {
   addProductService,
   updateProductService,
   deleteProductService,
-  updateInventoryService,
+  //updateInventoryService,
   getVendorProductsService,
+  //estockProductService,
 } from "./product.service.js";
 
 // ADD PRODUCT
@@ -71,26 +72,26 @@ export const deleteProduct = async (req, res) => {
   }
 };
 
-// UPDATE PRICE / STOCK
-export const updateInventory = async (req, res) => {
-  try {
-    const vendorId = req.user.vendorId;
+// // UPDATE PRICE / STOCK
+// export const updateInventory = async (req, res) => {
+//   try {
+//     const vendorId = req.user.vendorId;
 
-    const product = await updateInventoryService(
-      req.params.id,
-      req.body,
-      vendorId
-    );
+//     const product = await updateInventoryService(
+//       req.params.id,
+//       req.body,
+//       vendorId
+//     );
 
-    res.json({
-      success: true,
-      message: "Inventory updated",
-      data: product,
-    });
-  } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
-  }
-};
+//     res.json({
+//       success: true,
+//       message: "Inventory updated",
+//       data: product,
+//     });
+//   } catch (err) {
+//     res.status(400).json({ success: false, message: err.message });
+//   }
+// };
 
 // GET ALL PRODUCTS OF VENDOR
 export const getVendorProducts = async (req, res) => {
@@ -104,3 +105,32 @@ export const getVendorProducts = async (req, res) => {
     res.status(400).json({ success: false, message: err.message });
   }
 };
+// //restoke
+// export const restockProduct = async (req, res) => {
+//   try {
+
+//     const vendorId = req.user.vendorId;
+
+//     const { quantity } = req.body;
+
+//     const product = await restockProductService(
+//       req.params.id,
+//       vendorId,
+//       quantity
+//     );
+
+//     res.json({
+//       success: true,
+//       message: "Stock updated successfully",
+//       data: product
+//     });
+
+//   } catch (err) {
+
+//     res.status(400).json({
+//       success: false,
+//       message: err.message
+//     });
+
+//   }
+// };

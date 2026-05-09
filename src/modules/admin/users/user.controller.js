@@ -101,34 +101,46 @@ export const deleteUser = async (req, res) => {
   }
 };
 
-// Toggle block / unblock user
+// ==============================
+// Toggle Block / Unblock User
+// ==============================
 export const toggleUserStatus = async (req, res) => {
   try {
+
     const user = await toggleUserStatusService(req.params.id);
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found",
+        message: "User not found"
       });
     }
 
     res.status(200).json({
       success: true,
-      message: "User status updated",
-      data: user,
+      message: user.isBlocked
+        ? "User has been blocked"
+        : "User has been unblocked",
+      data: user
     });
+
   } catch (error) {
+
     res.status(500).json({
       success: false,
-      message: "Error updating user status",
+      message: "Error updating user status"
     });
+
   }
 };
 
-// Change user role
+
+// ==============================
+// Change User Role
+// ==============================
 export const changeUserRole = async (req, res) => {
   try {
+
     const user = await changeUserRoleService(
       req.params.id,
       req.body.role
@@ -137,44 +149,62 @@ export const changeUserRole = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found",
+        message: "User not found"
       });
     }
 
     res.status(200).json({
       success: true,
-      message: "User role updated",
-      data: user,
+      message: "User role updated successfully",
+      data: user
     });
+
   } catch (error) {
+
     res.status(500).json({
       success: false,
-      message: "Error changing user role",
+      message: "Error changing user role"
     });
+
   }
 };
 
-// Verify user email
+
+// ==============================
+// Verify User Email
+// ==============================
 export const verifyUserEmail = async (req, res) => {
   try {
+
     const user = await verifyUserEmailService(req.params.id);
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found",
+        message: "User not found"
       });
     }
 
+
+    if (!user.isEmailVerified) {
+     return res.status(403).json({
+      success: false,
+      message: "Please verify your email first"
+     });
+  }
+
     res.status(200).json({
       success: true,
-      message: "User email verified",
-      data: user,
+      message: "User email verified successfully",
+      data: user
     });
+
   } catch (error) {
+
     res.status(500).json({
       success: false,
-      message: "Error verifying email",
+      message: "Error verifying email"
     });
+
   }
 };

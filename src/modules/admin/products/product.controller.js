@@ -4,6 +4,10 @@ import {
   updateProductService,
   deleteProductService,
   toggleProductStatusService,
+  getPendingProductsService,
+  approveProductService,
+  rejectProductService,
+  //verifyProductService,
 } from "./product.service.js";
 
 // Get all products
@@ -111,3 +115,82 @@ export const toggleProductStatus = async (req, res) => {
     });
   }
 };
+
+
+// GET PENDING PRODUCTS
+export const getPendingProducts = async (req, res) => {
+  try {
+    const products = await getPendingProductsService();
+
+    res.json({ success: true, data: products });
+  } catch (err) {
+  console.error(err); // 👈 ADD THIS
+  res.status(400).json({
+    success: false,
+    message: err.message // 👈 SHOW REAL ERROR
+  });
+ }
+};
+
+// APPROVE PRODUCT
+export const approveProduct = async (req, res) => {
+  try {
+    const product = await approveProductService(req.params.id);
+
+    res.json({
+      success: true,
+      message: "Product approved",
+      data: product,
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+// REJECT PRODUCT
+export const rejectProduct = async (req, res) => {
+  try {
+    const { reason } = req.body;
+
+    const product = await rejectProductService(req.params.id, reason);
+
+    res.json({
+      success: true,
+      message: "Product rejected",
+      data: product,
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+// export const verifyProduct = async (req, res) => {
+//   try {
+//     const { status, reason } = req.body;
+
+//     // ✅ Validate input
+//     if (!status) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Status is required",
+//       });
+//     }
+
+//     const product = await verifyProductService(
+//       req.params.id,
+//       status,
+//       reason
+//     );
+
+//     res.json({
+//       success: true,
+//       message: `Product ${status.toLowerCase()} successfully`,
+//       data: product,
+//     });
+//   } catch (err) {
+//     res.status(400).json({
+//       success: false,
+//       message: err.message,
+//     });
+//   }
+// };
