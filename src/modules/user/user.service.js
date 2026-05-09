@@ -845,3 +845,27 @@ export const removeFromWishlistService = async (userId, productId) => {
   await wishlist.save();
   return wishlist;
 };
+
+
+/// order tracking 
+import Order from "../../models/Order.js";
+
+export const createOrderService = async (data, userId) => {
+  const order = new Order({
+    user: userId,
+    items: data.items,
+    totalAmount: data.totalAmount,
+
+    // 🔥 ADD HERE
+    trackingHistory: [
+      {
+        status: "PLACED",
+        message: "Your order has been placed",
+      },
+    ],
+  });
+
+  await order.save();
+
+  return order;
+};

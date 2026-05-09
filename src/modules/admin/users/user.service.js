@@ -41,33 +41,48 @@ export const deleteUserService = async (id) => {
   return await User.findByIdAndDelete(id);
 };
 
-// Toggle block / unblock user
+
+// ==============================
+// Toggle Block / Unblock User
+// ==============================
 export const toggleUserStatusService = async (id) => {
+
+  // Find user by ID
   const user = await User.findById(id);
 
   if (!user) return null;
 
+  // Toggle block status
   user.isBlocked = !user.isBlocked;
 
+  // Save updated status
   await user.save();
 
   return user;
 };
 
-// Change user role
+// ==============================
+// Change User Role
+// ==============================
 export const changeUserRoleService = async (id, role) => {
+
   return await User.findByIdAndUpdate(
     id,
-    { role },
-    { new: true }
+    { role },      // update role
+    { new: true }  // return updated user
   );
+
 };
 
-// Verify user email manually
+// ==============================
+// Verify Email Manually
+// ==============================
 export const verifyUserEmailService = async (id) => {
+
   return await User.findByIdAndUpdate(
     id,
     { isEmailVerified: true },
     { new: true }
   );
+
 };

@@ -3,8 +3,9 @@ import {
   addProduct,
   updateProduct,
   deleteProduct,
-  updateInventory,
+  //updateInventory,
   getVendorProducts,
+  //restockProduct ,
 } from "./product.controller.js";
 
 import { authMiddleware } from "../../../middlewares/authMiddleware.js";
@@ -28,10 +29,17 @@ router.put("/:id", authMiddleware, isVendor, updateProduct);
 // Delete Product
 router.delete("/:id", authMiddleware, isVendor, deleteProduct);
 
-// Update Price / Stock
-router.patch("/:id/inventory", authMiddleware, isVendor, updateInventory);
+// // Update Price / Stock
+// router.patch("/:id/inventory", authMiddleware, isVendor, updateInventory);
 
 // Get Vendor Products
 router.get("/", authMiddleware, isVendor, getVendorProducts);
 
+// //restockProduct
+// router.patch(
+//   "/:id/restock",
+//   authMiddleware,
+//   isVendor,
+//   restockProduct
+// );
 export default router;

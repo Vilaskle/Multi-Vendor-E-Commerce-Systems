@@ -6,6 +6,7 @@ import {
   deleteVendor,
   toggleVendorStatus,
   approveVendor,
+  
 } from "./vendor.controller.js";
 
 import { authMiddleware, adminOnly } from "../../../middlewares/authMiddleware.js";
@@ -24,10 +25,11 @@ router.put("/:id", authMiddleware, adminOnly,updateVendor);
 router.delete("/:id", authMiddleware, adminOnly,deleteVendor);
 
 // // Block / Unblock vendor
-// router.patch("/:id/block",authMiddleware, adminOnly, toggleVendorStatus);
+ router.patch("/:id/block",authMiddleware, adminOnly, toggleVendorStatus);
 
 // Approve / Reject
-router.patch("/:id/approve", authMiddleware, adminOnly,approveVendor);
+router.patch("/:id/status", authMiddleware, adminOnly,approveVendor);
 
 // router.patch("/vendors/:id/status", authMiddleware, isAdmin, updateVendorStatus);
+
 export default router;

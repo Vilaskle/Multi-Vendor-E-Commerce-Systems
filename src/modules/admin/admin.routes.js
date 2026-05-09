@@ -28,40 +28,153 @@
 
 // export default router;
 
-import express from "express";
+// import express from "express";
 // import {
 //   getAllVendors,
 //   approveVendor,
 //   rejectVendor,
 // } from "./admin.controller.js";
 
+// import { authMiddleware } from "../../middlewares/authMiddleware.js";
+// import { isAdmin } from "../../middlewares/roleMiddleware.js";
+// import { adminLogin } from "./admin.controller.js";
+// //import { getAllUsersByAdminController } from "./admin.controller.js";
+// import productRoutes from "./products/product.routes.js";
+// import orderRoutes from "./orders/order.routes.js";
+// import vendorRoutes from "./vendors/vendor.routes.js";
+// import userRoutes from "./users/user.routes.js";
+
+// const router = express.Router();
+
+// router.use("/products", productRoutes);
+// router.post("/login", adminLogin);
+// // View all vendors
+// //router.get("/vendors", authMiddleware, isAdmin, getAllVendors);
+
+// // // Approve vendor
+// // router.put("/vendor/:vendorId/approve", authMiddleware, isAdmin, approveVendor);
+
+// // // Reject vendor
+// // router.put("/vendor/:vendorId/reject", authMiddleware, isAdmin, rejectVendor);
+// router.use("/orders", orderRoutes);
+
+
+// router.use("/users", userRoutes);
+// router.use("/vendors", vendorRoutes);
+
+// router.use("/products", productRoutes)
+
+// export default router;
+
+
+// import express from "express";
+// import { authMiddleware } from "../../middlewares/authMiddleware.js";
+// import { isAdmin } from "../../middlewares/roleMiddleware.js";
+// import { getDashboardData } from "./admin.controller.js";
+// import { adminLogin, getDashboardCounts } from "./admin.controller.js";
+
+// import productRoutes from "./products/product.routes.js";
+// import orderRoutes from "./orders/order.routes.js";
+// import vendorRoutes from "./vendors/vendor.routes.js";
+// import userRoutes from "./users/user.routes.js";
+
+// const router = express.Router();
+
+// // Admin Login
+// router.post("/login", adminLogin);
+
+// //analytics
+// router.get("/analysis", authMiddleware, isAdmin, getDashboardData);
+
+// // Dashboard counts (for sidebar badges)
+// router.get("/dashboard/counts", authMiddleware, isAdmin, getDashboardCounts);
+
+
+// // Modules
+// router.use("/products", productRoutes);
+// router.use("/orders", orderRoutes);
+// router.use("/users", userRoutes);
+// router.use("/vendors", vendorRoutes);
+
+
+// export default router;
+
+
+// import express from "express";
+// import { authMiddleware } from "../../middlewares/authMiddleware.js";
+// import { isAdmin } from "../../middlewares/roleMiddleware.js";
+// import {
+//   adminLogin,
+//   getDashboardCounts,
+//   getDashboardData,
+//   adminLogin,
+//   getDashboardCounts,
+//   getDashboardData,
+//   getGraphData,  
+// } from "./admin.controller.js";
+
+// import productRoutes from "./products/product.routes.js";
+// import orderRoutes from "./orders/order.routes.js";
+// import vendorRoutes from "./vendors/vendor.routes.js";
+// import userRoutes from "./users/user.routes.js";
+
+// const router = express.Router();
+
+// // Public
+// router.post("/login", adminLogin);
+
+// // Protected
+// router.get("/analysis", authMiddleware, isAdmin, getDashboardData);
+// router.get("/dashboard/counts", authMiddleware, isAdmin, getDashboardCounts);
+// //
+// router.get("/graphs", authMiddleware, isAdmin, getGraphData);
+
+// // Sub-modules (protected)
+// router.use("/products", authMiddleware, isAdmin, productRoutes);
+// router.use("/orders", authMiddleware, isAdmin, orderRoutes);
+// router.use("/users", authMiddleware, isAdmin, userRoutes);
+// router.use("/vendors", authMiddleware, isAdmin, vendorRoutes);
+
+// export default router;
+
+import express from "express";
 import { authMiddleware } from "../../middlewares/authMiddleware.js";
 import { isAdmin } from "../../middlewares/roleMiddleware.js";
-import { adminLogin } from "./admin.controller.js";
-//import { getAllUsersByAdminController } from "./admin.controller.js";
+import {
+  adminLogin,
+  getDashboardCounts,
+  getDashboardData,
+  getGraphData,
+  getAdminWallet,
+} from "./admin.controller.js";
+
 import productRoutes from "./products/product.routes.js";
 import orderRoutes from "./orders/order.routes.js";
 import vendorRoutes from "./vendors/vendor.routes.js";
 import userRoutes from "./users/user.routes.js";
-
+import homepageRoutes from "./homepage/homepage.routes.js";
+import reviewRoutes from "./reviews/review.routes.js";
+import notificationRoutes from "./notifications/notification.routes.js";
 const router = express.Router();
 
-router.use("/products", productRoutes);
-router.post("/login", adminLogin);
-// View all vendors
-//router.get("/vendors", authMiddleware, isAdmin, getAllVendors);
+// // Public
+ router.post("/login", adminLogin);
 
-// // Approve vendor
-// router.put("/vendor/:vendorId/approve", authMiddleware, isAdmin, approveVendor);
+// Protected
+router.get("/analysis", authMiddleware, isAdmin, getDashboardData);
+router.get("/dashboard/counts", authMiddleware, isAdmin, getDashboardCounts);
+router.get("/graphs", authMiddleware, isAdmin, getGraphData);
 
-// // Reject vendor
-// router.put("/vendor/:vendorId/reject", authMiddleware, isAdmin, rejectVendor);
-router.use("/orders", orderRoutes);
+// Sub-modules (protected)
+router.use("/products", authMiddleware, isAdmin, productRoutes);
+router.use("/orders", authMiddleware, isAdmin, orderRoutes);
+router.use("/users", authMiddleware, isAdmin, userRoutes);
+router.use("/vendors", authMiddleware, isAdmin, vendorRoutes);4
 
-
-router.use("/users", userRoutes);
-router.use("/vendors", vendorRoutes);
-
-router.get("/products", productRoutes)
-
+//special offer 
+router.use("/homepage", authMiddleware, isAdmin,homepageRoutes);
+//review
+router.use("/reviews", reviewRoutes);
+router.use("/notifications",notificationRoutes);
+router.get("/wallet", authMiddleware, isAdmin,getAdminWallet);
 export default router;

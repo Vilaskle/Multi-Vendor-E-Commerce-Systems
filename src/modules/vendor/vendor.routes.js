@@ -62,7 +62,6 @@
 
 // export default router;
 
-
 import express from "express";
 import {
   registerVendor,
@@ -70,21 +69,26 @@ import {
   verifyVendorLoginOtp,
   getVendorProfile,
   updateVendorProfile,
-  addProduct
+  addBankDetails,
+  createFundAccount,
+  getVendorWallet,
+
 } from "./vendor.controller.js";
 
 import { authMiddleware } from "../../middlewares/authMiddleware.js";
 import { isVendor } from "../../middlewares/roleMiddleware.js";
 import upload from "../../middlewares/uploadMiddleware.js";
 
-//  ✅ Import product routes ONCE
- import productRoutes from "./products/product.routes.js";
-
+// ✅ Product routes
+import productRoutes from "./products/product.routes.js";
+import orderRoutes from "./orders/order.routes.js";
+//inventory
+import inventoryRoutes from "./inventory/inventory.routes.js";
 const router = express.Router();
 
 /**
  * ===============================
- * VENDOR REGISTRATION
+ * VENDOR REGISTRATION (NO OTP)
  * ===============================
  */
 router.post(
@@ -95,7 +99,7 @@ router.post(
 
 /**
  * ===============================
- * VENDOR LOGIN
+ * VENDOR LOGIN (OTP BASED)
  * ===============================
  */
 router.post("/login", requestVendorLoginOtp);
@@ -111,12 +115,22 @@ router.put("/profile", authMiddleware, isVendor, updateVendorProfile);
 
 /**
  * ===============================
- * PRODUCT MODULE (IMPORTANT)
+ * PRODUCT MODULE
  * ===============================
- * This mounts ALL product APIs under:
- * /api/vendor/products/*
  */
 router.use("/products", authMiddleware, isVendor, productRoutes);
 
+router.use("/inventory", authMiddleware, isVendor, inventoryRoutes); // ← ADD THIS
+
+
+router.use("/orders",authMiddleware, isVendor, orderRoutes)
+
+
+
+//new
+router.post("/bank-details",authMiddleware,isVendor,addBankDetails);
+router.post("/setup-payout",authMiddleware,isVendor,createFundAccount);
+ //router.post("/setup-payout", authMiddleware, isVendor, setupPayout);
+ router.get("/wallet", authMiddleware, isVendor, getVendorWallet);
 
 export default router;

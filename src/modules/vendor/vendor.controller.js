@@ -5,18 +5,17 @@ import {
   getVendorProfileService,
   updateVendorProfileService,
   addProductService,
+  getVendorWalletService,
 } from "./vendor.service.js";
 
 import Vendor from "../../models/Vendor.js";
-
 /* ======================================================
-   1️⃣ REGISTER VENDOR (PUBLIC – NO LOGIN REQUIRED)
+   REGISTER VENDOR (PUBLIC – NO LOGIN REQUIRED)
 ====================================================== */
 export const registerVendor = async (req, res) => {
   try {
     const { name, email, phoneNo, gstNumber } = req.body;
 
-    // ✅ Basic validation
     if (!name || !email || !phoneNo || !gstNumber) {
       return res.status(400).json({
         success: false,
@@ -31,7 +30,6 @@ export const registerVendor = async (req, res) => {
       });
     }
 
-    // ✅ Call service (Cloudinary upload + DB save)
     const vendor = await registerVendorService({
       name,
       email,
@@ -45,16 +43,13 @@ export const registerVendor = async (req, res) => {
       message: "Vendor registered successfully. Waiting for admin approval.",
       data: vendor,
     });
-
   } catch (err) {
-    console.error("REGISTER VENDOR ERROR:", err.message);
     res.status(400).json({
       success: false,
       message: err.message,
     });
   }
 };
-
 /* ======================================================
    2️⃣ REQUEST LOGIN OTP (ONLY APPROVED VENDORS)
 ====================================================== */
@@ -209,6 +204,90 @@ export const addProduct = async (req, res) => {
     res.status(500).json({
       success: false,
       message: err.message,
+    });
+  }
+};
+
+
+// new
+
+export const addBankDetails = async (req, res) => {
+  try {
+    const vendorId = req.user.vendorId;
+
+    const { accountHolderName, accountNumber, ifsc } = req.body;
+
+    if (!accountHolderName || !accountNumber || !ifsc) {
+      return res.status(400).json({
+        message: "All bank fields required",
+      });
+    }
+
+    const vendor = await Vendor.findById(vendorId);
+
+    vendor.bankDetails = {
+      accountHolderName,
+      accountNumber,
+      ifsc,
+    };
+
+    await vendor.save();
+
+    res.json({
+      success: true,
+      message: "Bank details added successfully",
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const createFundAccount = async (req, res) => {
+  try {
+    const vendorId = req.user.vendorId;
+
+    const vendor = await Vendor.findById(vendorId);
+
+    if (!vendor.bankDetails) {
+      return res.status(400).json({
+        message: "Add bank details first",
+      });
+    }
+
+    // 🔥 MOCK (no Razorpay)
+    vendor.razorpayContactId = "cont_test_" + Date.now();
+    vendor.fundAccountId = "fa_test_" + Date.now();
+
+    await vendor.save();
+
+    res.json({
+      success: true,
+      message: "Payout setup completed (mock)",
+    });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+export const getVendorWallet = async (req, res) => {
+  try {
+
+    const vendorId = req.user.vendorId;
+
+    const data = await getVendorWalletService(vendorId);
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+
+  } catch (error) {
+
+    res.status(400).json({
+      success: false,
+      message: error.message,
     });
   }
 };
