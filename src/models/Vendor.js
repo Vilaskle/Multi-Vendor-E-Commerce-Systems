@@ -42,7 +42,6 @@
 
 
 
-
 import mongoose from "mongoose";
 
 const vendorSchema = new mongoose.Schema(
@@ -61,35 +60,45 @@ const vendorSchema = new mongoose.Schema(
     },
 
     // ✅ Document Details
-    gstNumber: { type: String, required: true, unique: true}, // GST entered manually
+    gstNumber: { type: String, required: true, unique: true },
 
     shopLicense: {
-      url: String,        // uploaded file URL
+      url: String,
       public_id: String,
     },
+
+    // ✅ Delivery & Wallet
     deliveryCharge: {
-  type: Number,
-  default: 40,
-},
-wallet: {
-  balance: {
-    type: Number,
-    default: 0,
-  },
-},
+      type: Number,
+      default: 40,
+    },
+    wallet: {
+      balance: {
+        type: Number,
+        default: 0,
+      },
+    },
+
+    // ✅ Bank Details (filled after registration)
+    bankDetails: {
+      accountHolderName: { type: String, default: null },
+      accountNumber:     { type: String, default: null },
+      ifsc:              { type: String, default: null },
+    },
+
+    // ✅ Razorpay Payout
+    razorpayContactId: { type: String, default: null },
+    fundAccountId:     { type: String, default: null },
 
     // ✅ Track admin decision
     rejectionReason: { type: String },
     approvedAt: { type: Date },
 
-    // OTP login fields
+    // ✅ OTP login fields
     emailOtp: { type: String },
     emailOtpExpiry: { type: Date },
   },
-  
-  
   { timestamps: true }
 );
 
 export default mongoose.model("Vendor", vendorSchema);
-
