@@ -571,10 +571,14 @@ console.log("REQUESTED ADDRESS ID:", addressId);
         throw new Error(`${product.name} out of stock`);
 
       orderItems.push({
-        price: product.price,
-        quantity: item.quantity,
-        vendor: product.vendor,
-      });
+  price:
+    product.discount > 0
+      ? Math.round(product.price * (1 - product.discount / 100))
+      : product.price,
+
+  quantity: item.quantity,
+  vendor: product.vendor,
+});
     }
   }
 
@@ -597,11 +601,15 @@ console.log("REQUESTED ADDRESS ID:", addressId);
       if (product.stock < cartItem.quantity)
         throw new Error(`${product.name} out of stock`);
 
-      orderItems.push({
-        price: product.price,
-        quantity: cartItem.quantity,
-        vendor: product.vendor,
-      });
+     orderItems.push({
+  price:
+    product.discount > 0
+      ? Math.round(product.price * (1 - product.discount / 100))
+      : product.price,
+
+  quantity: cartItem.quantity,
+  vendor: product.vendor,
+});
     }
   }
 
@@ -664,7 +672,10 @@ export const createPaymentService = async ({
         throw new Error(`${product.name} out of stock`);
 
       orderItems.push({
-        price: product.price,
+        price:
+  product.discount > 0
+    ? Math.round(product.price * (1 - product.discount / 100))
+    : product.price,
         quantity: item.quantity,
         vendor: product.vendor,
 
@@ -694,7 +705,10 @@ export const createPaymentService = async ({
         throw new Error(`${product.name} out of stock`);
 
       orderItems.push({
-        price: product.price,
+       price:
+  product.discount > 0
+    ? Math.round(product.price * (1 - product.discount / 100))
+    : product.price,
         quantity: cartItem.quantity,
         vendor: product.vendor,
 
@@ -865,7 +879,10 @@ export const verifyPaymentService = async ({
       orderItems.push({
         product: product._id,
         vendor: product.vendor,
-        price: product.price,
+        price:
+  product.discount > 0
+    ? Math.round(product.price * (1 - product.discount / 100))
+    : product.price,
         quantity: item.quantity,
           selectedSize: item.selectedSize || item.size || null,
   selectedColor: item.selectedColor || item.color || null,

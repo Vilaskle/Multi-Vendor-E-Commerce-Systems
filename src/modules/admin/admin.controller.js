@@ -335,6 +335,8 @@ import {
   getTopVendorsByRevenue,
   getOrdersByDayOfWeek,
   getAdminWalletService,
+   getOrderPolicyService,
+  updateOrderPolicyService,
 } from "./admin.service.js";
 
 
@@ -599,6 +601,45 @@ export const settleVendorController = async (req, res) => {
     res.status(400).json({
       success: false,
       message: error.message,
+    });
+  }
+};
+
+
+
+/* =========================================================
+   GET ORDER POLICY
+========================================================= */
+export const getOrderPolicyController = async (req, res) => {
+  try {
+    const policy = await getOrderPolicyService();
+
+    res.status(200).json(policy);
+  } catch (err) {
+    console.error("Get Policy Error:", err.message);
+
+    res.status(500).json({
+      message: err.message || "Failed to fetch policy",
+    });
+  }
+};
+
+/* =========================================================
+   UPDATE ORDER POLICY
+========================================================= */
+export const updateOrderPolicyController = async (req, res) => {
+  try {
+    const updatedPolicy = await updateOrderPolicyService(req.body);
+
+    res.status(200).json({
+      message: "Order policy updated successfully",
+      policy: updatedPolicy,
+    });
+  } catch (err) {
+    console.error("Update Policy Error:", err.message);
+
+    res.status(500).json({
+      message: err.message || "Failed to update policy",
     });
   }
 };

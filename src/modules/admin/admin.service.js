@@ -446,6 +446,7 @@ import Payment from "../../models/Payment.js";
 import Transaction from "../../models/Transaction.js";
 import User from "../../models/User.js";
 import Product from "../../models/Product.js";
+import OrderPolicy from "../../models/OrderPolicy.js";
 import { sendOrderEmail } from "../../services/email/email.service.js";
 import { razorpay } from "../../services/payment/payment.gateway.js";
 
@@ -1148,12 +1149,204 @@ export const shipExchangeService = async ({ orderId, itemId }) => {
   };
 };
 
+// export const settleVendor = async ({ vendorId }) => {
+
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+
+//   try {
+
+//     /* ============================================================
+//        1️⃣ FETCH ONLY ELIGIBLE ORDERS (CORRECT FILTER)
+//     ============================================================ */
+//     const orders = await Order.find({
+//       items: {
+//         $elemMatch: {
+//           vendor: vendorId,
+//           status: "DELIVERED",
+//           refundStatus: "NONE",
+//           isSettled: false
+//         }
+//       }
+//     }).session(session);
+
+//     /* ============================================================
+//        2️⃣ INITIALIZE VARIABLES
+//     ============================================================ */
+//     let totalPayout = 0;
+//     let totalCommission = 0;
+//     let totalVendorAmount = 0;
+//     let settledItemsCount = 0;
+
+//     /* ============================================================
+//        3️⃣ PROCESS ITEMS (ITEM-LEVEL LOGIC)
+//     ============================================================ */
+//     for (const order of orders) {
+
+//       let orderUpdated = false;
+
+//       for (const item of order.items) {
+
+//         if (
+//           item.vendor.toString() === vendorId &&
+//           item.status === "DELIVERED" &&
+//           item.refundStatus === "NONE" &&
+//           !item.isSettled
+//         ) {
+
+//           const amount = item.price * item.quantity;
+
+//           const commissionRate = 0.1; // 🔥 you can make dynamic later
+//           const itemCommission = amount * commissionRate;
+//           const itemVendorAmount = amount - itemCommission;
+
+//           // accumulate
+//           totalPayout += amount;
+//           totalCommission += itemCommission;
+//           totalVendorAmount += itemVendorAmount;
+
+//           // store breakdown (optional but recommended)
+//           item.commission = itemCommission;
+//           item.vendorAmount = itemVendorAmount;
+
+//           // mark settled
+//           item.isSettled = true;
+//           item.settledAt = new Date();
+
+//           settledItemsCount++;
+//           orderUpdated = true;
+//         }
+//       }
+
+//       if (orderUpdated) {
+//         await order.save({ session });
+//       }
+//     }
+
+//     /* ============================================================
+//        ❌ NOTHING TO SETTLE
+//     ============================================================ */
+//     if (totalPayout === 0) {
+//       throw new Error("No items eligible for settlement");
+//     }
+
+//     /* ============================================================
+//        4️⃣ FINAL AMOUNTS
+//     ============================================================ */
+//     const commission = totalCommission;
+//     const vendorAmount = totalVendorAmount;
+
+//     /* ============================================================
+//        5️⃣ VALIDATE ADMIN
+//     ============================================================ */
+//     const admin = await Admin.findOne({ role: "ADMIN" }).session(session);
+
+//     if (!admin) throw new Error("Admin not found");
+
+//     if (admin.wallet.balance < vendorAmount) {
+//       throw new Error("Insufficient admin balance");
+//     }
+
+//     /* ============================================================
+//        6️⃣ VALIDATE VENDOR
+//     ============================================================ */
+//     const vendor = await Vendor.findById(vendorId).session(session);
+
+//     if (!vendor) throw new Error("Vendor not found");
+
+//     /* ============================================================
+//        7️⃣ ADMIN WALLET DEBIT
+//     ============================================================ */
+//     await Admin.findByIdAndUpdate(
+//       admin._id,
+//       {
+//         $inc: { "wallet.balance": -vendorAmount },
+//       },
+//       { session }
+//     );
+
+//     await Transaction.create(
+//       [{
+//         actorType: "ADMIN",
+//         actorId: admin._id,
+//         type: "DEBIT",
+//         amount: vendorAmount,
+//         source: "SETTLEMENT",
+//         description: "Vendor payout",
+//       }],
+//       { session }
+//     );
+
+//     /* ============================================================
+//        8️⃣ VENDOR WALLET CREDIT
+//     ============================================================ */
+//     await Vendor.findByIdAndUpdate(
+//       vendorId,
+//       {
+//         $inc: { "wallet.balance": vendorAmount },
+//       },
+//       { session }
+//     );
+
+//     await Transaction.create(
+//       [{
+//         actorType: "VENDOR",
+//         actorId: vendorId,
+//         type: "CREDIT",
+//         amount: vendorAmount,
+//         source: "SETTLEMENT",
+//         description: "Payout received from admin",
+//       }],
+//       { session }
+//     );
+
+//     /* ============================================================
+//        ✅ COMMIT TRANSACTION
+//     ============================================================ */
+//     await session.commitTransaction();
+//     session.endSession();
+
+//     return {
+//       success: true,
+//       totalItemsPayout: totalPayout,
+//       commission,
+//       vendorAmount,
+//       itemsSettled: settledItemsCount
+//     };
+
+//   } catch (error) {
+
+//     /* ============================================================
+//        ❌ ROLLBACK
+//     ============================================================ */
+//     await session.abortTransaction();
+//     session.endSession();
+
+//     console.error("Settlement Error:", error.message);
+
+//     throw new Error(error.message || "Settlement failed");
+//   }
+// };
+
+
+
 export const settleVendor = async ({ vendorId }) => {
 
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
+
+    const policy = await OrderPolicy.findOne();
+
+if (!policy) {
+  throw new Error("Order policy not configured");
+}
+
+const settlementWindowDays = Math.max(
+  policy.returnWindowDays || 0,
+  policy.exchangeWindowDays || 0
+);
 
     /* ============================================================
        1️⃣ FETCH ONLY ELIGIBLE ORDERS (CORRECT FILTER)
@@ -1186,12 +1379,23 @@ export const settleVendor = async ({ vendorId }) => {
 
       for (const item of order.items) {
 
-        if (
-          item.vendor.toString() === vendorId &&
-          item.status === "DELIVERED" &&
-          item.refundStatus === "NONE" &&
-          !item.isSettled
-        ) {
+        const deliveredDate = item.deliveredAt || order.updatedAt;
+
+const eligibleSettlementDate = new Date(deliveredDate);
+
+eligibleSettlementDate.setDate(
+  eligibleSettlementDate.getDate() + settlementWindowDays
+);
+
+const now = new Date();
+
+if (
+  item.vendor.toString() === vendorId &&
+  item.status === "DELIVERED" &&
+  item.refundStatus === "NONE" &&
+  !item.isSettled &&
+  now >= eligibleSettlementDate
+) {
 
           const amount = item.price * item.quantity;
 
@@ -1325,4 +1529,58 @@ export const settleVendor = async ({ vendorId }) => {
 
     throw new Error(error.message || "Settlement failed");
   }
+};
+
+/* =========================================================
+   GET ORDER POLICY
+========================================================= */
+export const getOrderPolicyService = async () => {
+  let policy = await OrderPolicy.findOne();
+
+  // create default if missing
+  if (!policy) {
+    policy = await OrderPolicy.create({
+      cancellationWindowDays: 3,
+      returnWindowDays: 7,
+      exchangeWindowDays: 7,
+    });
+  }
+
+  return policy;
+};
+
+/* =========================================================
+   UPDATE ORDER POLICY
+========================================================= */
+export const updateOrderPolicyService = async ({
+  cancellationWindowDays,
+  returnWindowDays,
+  exchangeWindowDays,
+}) => {
+
+  let policy = await OrderPolicy.findOne();
+
+  // create if not exists
+  if (!policy) {
+    policy = new OrderPolicy();
+  }
+
+  if (cancellationWindowDays !== undefined) {
+    policy.cancellationWindowDays =
+      Number(cancellationWindowDays);
+  }
+
+  if (returnWindowDays !== undefined) {
+    policy.returnWindowDays =
+      Number(returnWindowDays);
+  }
+
+  if (exchangeWindowDays !== undefined) {
+    policy.exchangeWindowDays =
+      Number(exchangeWindowDays);
+  }
+
+  await policy.save();
+
+  return policy;
 };

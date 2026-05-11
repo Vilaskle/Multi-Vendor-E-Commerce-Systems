@@ -153,7 +153,9 @@ import {
   settleVendorController,
   rejectReturn,
   refundReturn,
-  shipExchange
+  shipExchange,
+   getOrderPolicyController,
+  updateOrderPolicyController,
 } from "./admin.controller.js";
 
 
@@ -221,5 +223,17 @@ router.post(
   authMiddleware,
   isAdmin,
   settleVendorController
+);
+
+router.get(
+  "/order-policy",
+  isAdmin,
+  getOrderPolicyController
+);
+
+router.put(
+  "/order-policy",
+  isAdmin,
+  updateOrderPolicyController
 );
 export default router;

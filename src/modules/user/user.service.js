@@ -946,7 +946,13 @@ export const addToCartService = async (userId, productId, quantity,selectedSize,
         selectedSize,
       selectedColor,
       quantity,
-      price: product.price, // snapshot
+      price:
+  product.discount > 0
+    ? Math.round(
+        product.price *
+          (1 - product.discount / 100)
+      )
+    : product.price,
     });
   }
 
