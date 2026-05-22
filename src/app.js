@@ -49,7 +49,7 @@
 import express from "express";
 import cors from "cors";
 
-
+import cookieParser from "cookie-parser";
 import authRoutes from "./auth/auth.routes.js";
 import userRoutes from "./modules/user/user.routes.js";
 import vendorRoutes from "./modules/vendor/vendor.routes.js";
@@ -71,9 +71,28 @@ app.use(
   })
 );
 
+
 /* ================= BODY PARSER ================= */
 app.use(express.json());
+app.set("trust proxy", 1);
+app.use(cookieParser());
 
+app.use((req, res, next) => {
+
+  const start = Date.now();
+
+  res.on("finish", () => {
+
+    const duration = Date.now() - start;
+
+    console.log(
+      `${req.method} ${req.originalUrl} - ${duration}ms`
+    );
+
+  });
+
+  next();
+});
 /* ================= ROUTES ================= */
 app.use("/api/auth", authRoutes);
 app.use("/api", userRoutes);

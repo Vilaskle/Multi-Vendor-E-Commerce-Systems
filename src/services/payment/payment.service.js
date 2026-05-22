@@ -1,4 +1,3 @@
-
 // import Cart from "../../models/Cart.js";
 // import User from "../../models/User.js";
 // import Order from "../../models/Order.js";
@@ -49,10 +48,14 @@
 //         throw new Error(`${product.name} out of stock`);
 
 //       orderItems.push({
-//         price: product.price,
-//         quantity: item.quantity,
-//         vendor: product.vendor,
-//       });
+//   price:
+//     product.discount > 0
+//       ? Math.round(product.price * (1 - product.discount / 100))
+//       : product.price,
+
+//   quantity: item.quantity,
+//   vendor: product.vendor,
+// });
 //     }
 //   }
 
@@ -75,11 +78,15 @@
 //       if (product.stock < cartItem.quantity)
 //         throw new Error(`${product.name} out of stock`);
 
-//       orderItems.push({
-//         price: product.price,
-//         quantity: cartItem.quantity,
-//         vendor: product.vendor,
-//       });
+//      orderItems.push({
+//   price:
+//     product.discount > 0
+//       ? Math.round(product.price * (1 - product.discount / 100))
+//       : product.price,
+
+//   quantity: cartItem.quantity,
+//   vendor: product.vendor,
+// });
 //     }
 //   }
 
@@ -142,7 +149,10 @@
 //         throw new Error(`${product.name} out of stock`);
 
 //       orderItems.push({
-//         price: product.price,
+//         price:
+//   product.discount > 0
+//     ? Math.round(product.price * (1 - product.discount / 100))
+//     : product.price,
 //         quantity: item.quantity,
 //         vendor: product.vendor,
 
@@ -172,7 +182,10 @@
 //         throw new Error(`${product.name} out of stock`);
 
 //       orderItems.push({
-//         price: product.price,
+//        price:
+//   product.discount > 0
+//     ? Math.round(product.price * (1 - product.discount / 100))
+//     : product.price,
 //         quantity: cartItem.quantity,
 //         vendor: product.vendor,
 
@@ -343,7 +356,10 @@
 //       orderItems.push({
 //         product: product._id,
 //         vendor: product.vendor,
-//         price: product.price,
+//         price:
+//   product.discount > 0
+//     ? Math.round(product.price * (1 - product.discount / 100))
+//     : product.price,
 //         quantity: item.quantity,
 //           selectedSize: item.selectedSize || item.size || null,
 //   selectedColor: item.selectedColor || item.color || null,
@@ -451,6 +467,25 @@
 //         amount: itemsTotal + deliveryTotal,
 //         status: "SUCCESS",
 //       });
+
+//         // 🔥 ADD THIS BLOCK HERE
+//   const admin = await Admin.findOne({ role: "ADMIN" });
+
+//   const totalAmount = itemsTotal + deliveryTotal;
+
+//   await Transaction.create({
+//     actorType: "ADMIN",
+//     actorId: admin._id,
+//     type: "CREDIT",
+//     amount: totalAmount,
+//     source: "ORDER",
+//     referenceId: orderGroup._id,
+//   });
+
+//   await Admin.findByIdAndUpdate(admin._id, {
+//     $inc: { "wallet.balance": totalAmount },
+//   });
+
 
       
 //     } else {
@@ -751,6 +786,346 @@ export const createPaymentService = async ({
 
 
 
+// export const verifyPaymentService = async ({
+//   userId,
+//   razorpayOrderId,
+//   razorpayPaymentId,
+//   razorpaySignature,
+//   items,
+//   from,
+//   paymentMethod,
+//   clientOrderId,
+// }) => {
+//   try {    /* ================= NORMALIZE PAYMENT METHOD ================= */
+//     const method = (paymentMethod || "ONLINE").toUpperCase();
+
+//     if (!userId) throw new Error("User ID missing");
+
+//     /* ================= VERIFY (ONLY ONLINE) ================= */
+//     if (method === "ONLINE") {
+//       const isValid = verifyRazorpaySignature({
+//         razorpayOrderId,
+//         razorpayPaymentId,
+//         razorpaySignature,
+//       });
+
+//       if (!isValid) throw new Error("Payment verification failed");
+//     }
+
+//     /* ================= DUPLICATE PROTECTION ================= */
+//     if (method === "ONLINE") {
+//       const existingOrders = await Order.find({ razorpayOrderId });
+
+//       if (existingOrders.length) {
+//         console.log("⚠️ Orders already exist, skipping...");
+//         return existingOrders;
+//       }
+//     }
+
+//     /* ================= GET ITEMS ================= */
+//     let sourceItems = [];
+
+//     if (from === "cart") {
+//       const cart = await Cart.findOne({ user: userId });
+
+//       if (!cart || !cart.items.length)
+//         throw new Error("Cart empty");
+
+//       // ✅ fallback only if items missing
+//       if (!items || !items.length) {
+//         items = cart.items.map((i) => i._id);
+//       }
+
+//       console.log("REQ ITEMS:", items);
+//       console.log("CART ITEMS:", cart.items);
+
+//       sourceItems = items
+//   .map((item) => {
+//     // ✅ CASE 1: item is already full object (from frontend)
+//    if (typeof item === "object" && item.product) {
+
+//   // ✅ If it already has size/color → use it
+//   if (item.selectedSize || item.selectedColor) {
+//     return item;
+//   }
+
+//   // ❌ If missing → fetch from cart using _id
+//   if (item._id) {
+//     const cartItem = cart.items.id(item._id);
+//     if (cartItem) return cartItem;
+//   }
+// }
+
+//     // ✅ CASE 2: item is ID → fetch from cart
+//     const cartItem = cart.items.id(item);
+
+//     if (!cartItem) {
+//       console.log("❌ Cart item missing:", item);
+//       return null;
+//     }
+
+//     return cartItem;
+//   })
+//   .filter(Boolean);
+//     } 
+//     else if (from === "buyNow") {
+//       if (!items || !items.length)
+//         throw new Error("No items for Buy Now");
+
+//       sourceItems = items;
+//     }
+
+//     console.log("SOURCE ITEMS:", sourceItems);
+
+//     /* ================= BUILD ITEMS ================= */
+//     let orderItems = [];
+
+//     for (const item of sourceItems) {
+//       let productId = null;
+
+//       if (typeof item.product === "object" && item.product !== null) {
+//         productId = item.product._id;
+//       } else {
+//         productId = item.product;
+//       }
+
+//       if (!productId) {
+//         console.log("❌ INVALID PRODUCT ID:", item);
+//         continue;
+//       }
+
+//       const product = await Product.findById(productId);
+
+//       if (!product) {
+//         console.log("❌ PRODUCT NOT FOUND:", productId);
+//         continue;
+//       }
+
+     
+
+//       orderItems.push({
+//         product: product._id,
+//         vendor: product.vendor,
+//         price:
+//   product.discount > 0
+//     ? Math.round(product.price * (1 - product.discount / 100))
+//     : product.price,
+//         quantity: item.quantity,
+//           selectedSize: item.selectedSize || item.size || null,
+//   selectedColor: item.selectedColor || item.color || null,
+
+//   cartItemId: item._id || null,
+//         status: "PLACED",
+//         refundStatus: "NONE",
+//       });
+//     }
+
+//     console.log("ORDER ITEMS:", orderItems);
+
+//     if (!orderItems.length)
+//       throw new Error("No valid items to order");
+
+//     /* ================= GROUP BY VENDOR ================= */
+//     const vendorGroups = {};
+
+//     for (const item of orderItems) {
+//       const vid = item.vendor.toString();
+//       if (!vendorGroups[vid]) vendorGroups[vid] = [];
+//       vendorGroups[vid].push(item);
+//     }
+
+//     const vendorIds = Object.keys(vendorGroups);
+
+//     /* ================= TOTAL ================= */
+//     const itemsTotal = orderItems.reduce(
+//       (sum, i) => sum + i.price * i.quantity,
+//       0
+//     );
+
+//     const settings = await PlatformSettings.findOne();
+//     if (!settings)
+//       throw new Error("Platform settings not configured");
+
+//     const deliveryTotal =
+//       itemsTotal >= settings.freeDeliveryThreshold
+//         ? 0
+//         : settings.adminDeliveryCharge;
+
+
+        
+
+
+//     /* ================= ORDER GROUP ================= */
+//     const orderGroup = await OrderGroup.create({
+//       user: userId,
+//       razorpayOrderId: method === "ONLINE" ? razorpayOrderId : null,
+//       totalAmount: itemsTotal + deliveryTotal,
+//       deliveryCharge: deliveryTotal,
+//       paymentStatus: method === "COD" ? "PENDING" : "PAID",
+//     });
+
+//     /* ================= CREATE ORDERS ================= */
+//     const createdOrders = [];
+
+//     for (const vendorId of vendorIds) {
+//       const vendorItems = vendorGroups[vendorId];
+
+//       const itemsTotalVendor = vendorItems.reduce(
+//         (sum, i) => sum + i.price * i.quantity,
+//         0
+//       );
+
+     
+
+//       const order = await Order.create({
+//         user: userId,
+//         vendor: vendorId,
+//         orderGroup: orderGroup._id,
+//         items: vendorItems,
+//         itemsTotal: itemsTotalVendor,
+//         deliveryCharge: 0,
+//         totalAmount: itemsTotalVendor,
+//         razorpayOrderId: method === "ONLINE" ? razorpayOrderId : null,
+//          paymentMethod: method, 
+//         paymentStatus: method === "COD" ? "PENDING" : "PAID",
+//         orderStatus: "PLACED",
+//         from: from,
+//       });
+
+//       createdOrders.push(order);
+//     }
+
+//      /* ================= STOCK UPDATE ================= */
+// for (const order of createdOrders) {
+//   for (const item of order.items) {
+
+//     const updatedProduct = await Product.findOneAndUpdate(
+//       {
+//         _id: item.product,
+//         stock: { $gte: item.quantity }, // enough stock check
+//       },
+//       {
+//         $inc: { stock: -item.quantity }, // reduce stock
+//       },
+//       {
+//         new: true,
+//       }
+//     );
+
+//     // ❌ If stock not available
+//    if (!updatedProduct) {
+//   const failedProduct = await Product.findById(item.product);
+
+//   throw new Error(
+//     `${failedProduct?.name || "Product"} is out of stock`
+//   );
+// }
+//   }
+// }
+
+//     /* ================= LINK ORDERS ================= */
+//     orderGroup.orders = createdOrders.map((o) => o._id);
+//     await orderGroup.save();
+
+   
+//     /* ================= SAVE PAYMENT ================= */
+//     if (method === "ONLINE") {
+//       await Payment.create({
+//         user: userId,
+//         orders: createdOrders.map((o) => o._id),
+//         razorpayOrderId,
+//         razorpayPaymentId,
+//         razorpaySignature,
+//         amount: itemsTotal + deliveryTotal,
+//         status: "SUCCESS",
+//       });
+
+//         // 🔥 ADD THIS BLOCK HERE
+//   const admin = await Admin.findOne({ role: "ADMIN" });
+
+//   const totalAmount = itemsTotal + deliveryTotal;
+
+//   await Transaction.create({
+//     actorType: "ADMIN",
+//     actorId: admin._id,
+//     type: "CREDIT",
+//     amount: totalAmount,
+//     source: "ORDER",
+//     referenceId: orderGroup._id,
+//   });
+
+//   await Admin.findByIdAndUpdate(admin._id, {
+//     $inc: { "wallet.balance": totalAmount },
+//   });
+
+
+      
+//     } else {
+//       await Payment.create({
+//         user: userId,
+//         orders: createdOrders.map((o) => o._id),
+//         amount: itemsTotal + deliveryTotal,
+//         method: "COD",
+//         status: "PENDING",
+//       });
+//     }
+
+//     /* ================= CLEAR CART (SAFE FIX) ================= */
+//     const isBuyNowFlow =
+//       items &&
+//       items.length &&
+//       typeof items[0] === "object" &&
+//       items[0].product; // buyNow items have product field
+
+//     if (from === "cart" && !isBuyNowFlow) {
+//       const cart = await Cart.findOne({ user: userId });
+
+//       if (cart) {
+//         const itemIds = items
+//           .map((i) => {
+//             if (typeof i === "object" && i !== null) {
+//               return i._id?.toString();
+//             }
+//             return i.toString();
+//           })
+//           .filter((id) => id && id.length === 24);
+
+//         console.log("🧾 Removing item IDs:", itemIds);
+
+//         if (itemIds.length) {
+//           cart.items = cart.items.filter(
+//             (item) => !itemIds.includes(item._id.toString())
+//           );
+
+//           cart.totalPrice = cart.items.reduce(
+//             (sum, item) => sum + item.price * item.quantity,
+//             0
+//           );
+
+//           await cart.save();
+//         } else {
+//           console.log("⚠️ Skipping cart clear (no valid IDs)");
+//         }
+//       }
+//     } else {
+//       console.log("🛑 Skipping cart clear (Buy Now flow)");
+//     }
+
+//     /* ================= RESPONSE ================= */
+//     return {
+//       orders: createdOrders,
+//       total: itemsTotal + deliveryTotal,
+//       deliveryCharge: deliveryTotal,
+//     };
+
+//   } catch (err) {
+//     console.error("❌ ORDER ERROR:", err.message);
+//     throw new Error(err.message || "Order failed");
+//   }
+// };
+
+
+
 export const verifyPaymentService = async ({
   userId,
   razorpayOrderId,
@@ -761,7 +1136,13 @@ export const verifyPaymentService = async ({
   paymentMethod,
   clientOrderId,
 }) => {
+
+  const session = await mongoose.startSession();
+
   try {
+
+    session.startTransaction();
+
     /* ================= DEBUG ================= */
     console.log("🚀 FROM VALUE:", from);
     console.log("🚀 ITEMS RECEIVED:", items);
@@ -784,10 +1165,16 @@ export const verifyPaymentService = async ({
 
     /* ================= DUPLICATE PROTECTION ================= */
     if (method === "ONLINE") {
-      const existingOrders = await Order.find({ razorpayOrderId });
+      const existingOrders = await Order.find({
+        razorpayOrderId,
+      });
 
       if (existingOrders.length) {
         console.log("⚠️ Orders already exist, skipping...");
+
+        await session.abortTransaction();
+        session.endSession();
+
         return existingOrders;
       }
     }
@@ -796,12 +1183,14 @@ export const verifyPaymentService = async ({
     let sourceItems = [];
 
     if (from === "cart") {
-      const cart = await Cart.findOne({ user: userId });
+
+      const cart = await Cart.findOne({
+        user: userId,
+      }).session(session);
 
       if (!cart || !cart.items.length)
         throw new Error("Cart empty");
 
-      // ✅ fallback only if items missing
       if (!items || !items.length) {
         items = cart.items.map((i) => i._id);
       }
@@ -810,35 +1199,40 @@ export const verifyPaymentService = async ({
       console.log("CART ITEMS:", cart.items);
 
       sourceItems = items
-  .map((item) => {
-    // ✅ CASE 1: item is already full object (from frontend)
-   if (typeof item === "object" && item.product) {
+        .map((item) => {
 
-  // ✅ If it already has size/color → use it
-  if (item.selectedSize || item.selectedColor) {
-    return item;
-  }
+          if (
+            typeof item === "object" &&
+            item.product
+          ) {
 
-  // ❌ If missing → fetch from cart using _id
-  if (item._id) {
-    const cartItem = cart.items.id(item._id);
-    if (cartItem) return cartItem;
-  }
-}
+            if (
+              item.selectedSize ||
+              item.selectedColor
+            ) {
+              return item;
+            }
 
-    // ✅ CASE 2: item is ID → fetch from cart
-    const cartItem = cart.items.id(item);
+            if (item._id) {
+              const cartItem = cart.items.id(item._id);
 
-    if (!cartItem) {
-      console.log("❌ Cart item missing:", item);
-      return null;
-    }
+              if (cartItem) return cartItem;
+            }
+          }
 
-    return cartItem;
-  })
-  .filter(Boolean);
-    } 
-    else if (from === "buyNow") {
+          const cartItem = cart.items.id(item);
+
+          if (!cartItem) {
+            console.log("❌ Cart item missing:", item);
+            return null;
+          }
+
+          return cartItem;
+        })
+        .filter(Boolean);
+
+    } else if (from === "buyNow") {
+
       if (!items || !items.length)
         throw new Error("No items for Buy Now");
 
@@ -851,9 +1245,13 @@ export const verifyPaymentService = async ({
     let orderItems = [];
 
     for (const item of sourceItems) {
+
       let productId = null;
 
-      if (typeof item.product === "object" && item.product !== null) {
+      if (
+        typeof item.product === "object" &&
+        item.product !== null
+      ) {
         productId = item.product._id;
       } else {
         productId = item.product;
@@ -864,30 +1262,40 @@ export const verifyPaymentService = async ({
         continue;
       }
 
-      const product = await Product.findById(productId);
+      const product = await Product.findById(productId)
+        .session(session);
 
       if (!product) {
         console.log("❌ PRODUCT NOT FOUND:", productId);
         continue;
       }
 
-      if (product.stock < item.quantity) {
-        console.log("❌ OUT OF STOCK:", product.name);
-        continue;
-      }
-
       orderItems.push({
         product: product._id,
         vendor: product.vendor,
-        price:
-  product.discount > 0
-    ? Math.round(product.price * (1 - product.discount / 100))
-    : product.price,
-        quantity: item.quantity,
-          selectedSize: item.selectedSize || item.size || null,
-  selectedColor: item.selectedColor || item.color || null,
 
-  cartItemId: item._id || null,
+        price:
+          product.discount > 0
+            ? Math.round(
+                product.price *
+                  (1 - product.discount / 100)
+              )
+            : product.price,
+
+        quantity: item.quantity,
+
+        selectedSize:
+          item.selectedSize ||
+          item.size ||
+          null,
+
+        selectedColor:
+          item.selectedColor ||
+          item.color ||
+          null,
+
+        cartItemId: item._id || null,
+
         status: "PLACED",
         refundStatus: "NONE",
       });
@@ -903,7 +1311,10 @@ export const verifyPaymentService = async ({
 
     for (const item of orderItems) {
       const vid = item.vendor.toString();
-      if (!vendorGroups[vid]) vendorGroups[vid] = [];
+
+      if (!vendorGroups[vid])
+        vendorGroups[vid] = [];
+
       vendorGroups[vid].push(item);
     }
 
@@ -915,162 +1326,346 @@ export const verifyPaymentService = async ({
       0
     );
 
-    const settings = await PlatformSettings.findOne();
+    const settings = await PlatformSettings.findOne()
+      .session(session);
+
     if (!settings)
-      throw new Error("Platform settings not configured");
+      throw new Error(
+        "Platform settings not configured"
+      );
 
     const deliveryTotal =
       itemsTotal >= settings.freeDeliveryThreshold
         ? 0
         : settings.adminDeliveryCharge;
 
-    /* ================= ORDER GROUP ================= */
-    const orderGroup = await OrderGroup.create({
-      user: userId,
-      razorpayOrderId: method === "ONLINE" ? razorpayOrderId : null,
-      totalAmount: itemsTotal + deliveryTotal,
-      deliveryCharge: deliveryTotal,
-      paymentStatus: method === "COD" ? "PENDING" : "PAID",
-    });
+    /* ================= STOCK UPDATE FIRST ================= */
 
-    /* ================= CREATE ORDERS ================= */
-    const createdOrders = [];
+    for (const item of orderItems) {
 
-    for (const vendorId of vendorIds) {
-      const vendorItems = vendorGroups[vendorId];
+      const updatedProduct =
+        await Product.findOneAndUpdate(
+          {
+            _id: item.product,
+            stock: { $gte: item.quantity },
+          },
+          {
+            $inc: {
+              stock: -item.quantity,
+            },
+          },
+          {
+            new: true,
+            session,
+          }
+        );
 
-      const itemsTotalVendor = vendorItems.reduce(
-        (sum, i) => sum + i.price * i.quantity,
-        0
-      );
+      if (!updatedProduct) {
 
-      const order = await Order.create({
-        user: userId,
-        vendor: vendorId,
-        orderGroup: orderGroup._id,
-        items: vendorItems,
-        itemsTotal: itemsTotalVendor,
-        deliveryCharge: 0,
-        totalAmount: itemsTotalVendor,
-        razorpayOrderId: method === "ONLINE" ? razorpayOrderId : null,
-         paymentMethod: method, 
-        paymentStatus: method === "COD" ? "PENDING" : "PAID",
-        orderStatus: "PLACED",
-        from: from,
-      });
+        const failedProduct =
+          await Product.findById(item.product)
+            .session(session);
 
-      createdOrders.push(order);
-    }
-
-    console.log("CREATED ORDERS:", createdOrders.length);
-
-    /* ================= LINK ORDERS ================= */
-    orderGroup.orders = createdOrders.map((o) => o._id);
-    await orderGroup.save();
-
-    /* ================= STOCK UPDATE ================= */
-    for (const order of createdOrders) {
-      for (const item of order.items) {
-        const product = await Product.findById(item.product);
-        if (product) {
-          product.stock -= item.quantity;
-          await product.save();
-        }
+        throw new Error(
+          `${
+            failedProduct?.name || "Product"
+          } is out of stock`
+        );
       }
     }
 
-    /* ================= SAVE PAYMENT ================= */
-    if (method === "ONLINE") {
-      await Payment.create({
-        user: userId,
-        orders: createdOrders.map((o) => o._id),
-        razorpayOrderId,
-        razorpayPaymentId,
-        razorpaySignature,
-        amount: itemsTotal + deliveryTotal,
-        status: "SUCCESS",
-      });
+    /* ================= ORDER GROUP ================= */
 
-        // 🔥 ADD THIS BLOCK HERE
-  const admin = await Admin.findOne({ role: "ADMIN" });
+    const orderGroupArr =
+      await OrderGroup.create(
+        [
+          {
+            user: userId,
 
-  const totalAmount = itemsTotal + deliveryTotal;
+            razorpayOrderId:
+              method === "ONLINE"
+                ? razorpayOrderId
+                : null,
 
-  await Transaction.create({
-    actorType: "ADMIN",
-    actorId: admin._id,
-    type: "CREDIT",
-    amount: totalAmount,
-    source: "ORDER",
-    referenceId: orderGroup._id,
-  });
+            totalAmount:
+              itemsTotal + deliveryTotal,
 
-  await Admin.findByIdAndUpdate(admin._id, {
-    $inc: { "wallet.balance": totalAmount },
-  });
+            deliveryCharge:
+              deliveryTotal,
 
+            paymentStatus:
+              method === "COD"
+                ? "PENDING"
+                : "PAID",
+          },
+        ],
+        { session }
+      );
 
-      
-    } else {
-      await Payment.create({
-        user: userId,
-        orders: createdOrders.map((o) => o._id),
-        amount: itemsTotal + deliveryTotal,
-        method: "COD",
-        status: "PENDING",
-      });
+    const orderGroup = orderGroupArr[0];
+
+    /* ================= CREATE ORDERS ================= */
+
+    const createdOrders = [];
+
+    for (const vendorId of vendorIds) {
+
+      const vendorItems =
+        vendorGroups[vendorId];
+
+      const itemsTotalVendor =
+        vendorItems.reduce(
+          (sum, i) =>
+            sum + i.price * i.quantity,
+          0
+        );
+
+      const orderArr = await Order.create(
+        [
+          {
+            user: userId,
+
+            vendor: vendorId,
+
+            orderGroup:
+              orderGroup._id,
+
+            items: vendorItems,
+
+            itemsTotal:
+              itemsTotalVendor,
+
+            deliveryCharge: 0,
+
+            totalAmount:
+              itemsTotalVendor,
+
+            razorpayOrderId:
+              method === "ONLINE"
+                ? razorpayOrderId
+                : null,
+
+            paymentMethod: method,
+
+            paymentStatus:
+              method === "COD"
+                ? "PENDING"
+                : "PAID",
+
+            orderStatus: "PLACED",
+
+            from: from,
+          },
+        ],
+        { session }
+      );
+
+      createdOrders.push(orderArr[0]);
     }
 
-    /* ================= CLEAR CART (SAFE FIX) ================= */
+    /* ================= LINK ORDERS ================= */
+
+    orderGroup.orders =
+      createdOrders.map((o) => o._id);
+
+    await orderGroup.save({ session });
+
+    /* ================= SAVE PAYMENT ================= */
+
+    if (method === "ONLINE") {
+
+      await Payment.create(
+        [
+          {
+            user: userId,
+
+            orders:
+              createdOrders.map(
+                (o) => o._id
+              ),
+
+            razorpayOrderId,
+            razorpayPaymentId,
+            razorpaySignature,
+
+            amount:
+              itemsTotal + deliveryTotal,
+
+            status: "SUCCESS",
+          },
+        ],
+        { session }
+      );
+
+      const admin =
+        await Admin.findOne({
+          role: "ADMIN",
+        }).session(session);
+
+      const totalAmount =
+        itemsTotal + deliveryTotal;
+
+      await Transaction.create(
+        [
+          {
+            actorType: "ADMIN",
+
+            actorId: admin._id,
+
+            type: "CREDIT",
+
+            amount: totalAmount,
+
+            source: "ORDER",
+
+            referenceId:
+              orderGroup._id,
+          },
+        ],
+        { session }
+      );
+
+      await Admin.findByIdAndUpdate(
+        admin._id,
+        {
+          $inc: {
+            "wallet.balance":
+              totalAmount,
+          },
+        },
+        { session }
+      );
+
+    } else {
+
+      await Payment.create(
+        [
+          {
+            user: userId,
+
+            orders:
+              createdOrders.map(
+                (o) => o._id
+              ),
+
+            amount:
+              itemsTotal + deliveryTotal,
+
+            method: "COD",
+
+            status: "PENDING",
+          },
+        ],
+        { session }
+      );
+    }
+
+    /* ================= CLEAR CART ================= */
+
     const isBuyNowFlow =
       items &&
       items.length &&
       typeof items[0] === "object" &&
-      items[0].product; // buyNow items have product field
+      items[0].product;
 
-    if (from === "cart" && !isBuyNowFlow) {
-      const cart = await Cart.findOne({ user: userId });
+    if (
+      from === "cart" &&
+      !isBuyNowFlow
+    ) {
+
+      const cart = await Cart.findOne({
+        user: userId,
+      }).session(session);
 
       if (cart) {
+
         const itemIds = items
           .map((i) => {
-            if (typeof i === "object" && i !== null) {
+
+            if (
+              typeof i === "object" &&
+              i !== null
+            ) {
               return i._id?.toString();
             }
+
             return i.toString();
           })
-          .filter((id) => id && id.length === 24);
+          .filter(
+            (id) =>
+              id &&
+              id.length === 24
+          );
 
-        console.log("🧾 Removing item IDs:", itemIds);
+        console.log(
+          "🧾 Removing item IDs:",
+          itemIds
+        );
 
         if (itemIds.length) {
-          cart.items = cart.items.filter(
-            (item) => !itemIds.includes(item._id.toString())
-          );
 
-          cart.totalPrice = cart.items.reduce(
-            (sum, item) => sum + item.price * item.quantity,
-            0
-          );
+          cart.items =
+            cart.items.filter(
+              (item) =>
+                !itemIds.includes(
+                  item._id.toString()
+                )
+            );
 
-          await cart.save();
+          cart.totalPrice =
+            cart.items.reduce(
+              (sum, item) =>
+                sum +
+                item.price *
+                  item.quantity,
+              0
+            );
+
+          await cart.save({ session });
+
         } else {
-          console.log("⚠️ Skipping cart clear (no valid IDs)");
+          console.log(
+            "⚠️ Skipping cart clear (no valid IDs)"
+          );
         }
       }
+
     } else {
-      console.log("🛑 Skipping cart clear (Buy Now flow)");
+      console.log(
+        "🛑 Skipping cart clear (Buy Now flow)"
+      );
     }
 
+    /* ================= COMMIT ================= */
+
+    await session.commitTransaction();
+
+    session.endSession();
+
     /* ================= RESPONSE ================= */
+
     return {
       orders: createdOrders,
-      total: itemsTotal + deliveryTotal,
-      deliveryCharge: deliveryTotal,
+      total:
+        itemsTotal + deliveryTotal,
+
+      deliveryCharge:
+        deliveryTotal,
     };
 
   } catch (err) {
-    console.error("❌ ORDER ERROR:", err.message);
-    throw new Error(err.message || "Order failed");
+
+    await session.abortTransaction();
+
+    session.endSession();
+
+    console.error(
+      "❌ ORDER ERROR:",
+      err.message
+    );
+
+    throw new Error(
+      err.message || "Order failed"
+    );
   }
 };

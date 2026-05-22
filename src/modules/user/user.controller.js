@@ -13,6 +13,7 @@ import {registerUserService,
   deleteAddressService,
   fetchProducts,
   fetchSingleProduct,
+  fetchProductFilters,
   addToCartService ,
     getCartService ,
      updateCartItemService ,
@@ -29,7 +30,9 @@ import {registerUserService,
   getProductReviewsService,
    saveRefundDetailsService,
    getHomePageService,
-   getOrderPolicyService 
+   getOrderPolicyService,
+   refreshAccessTokenService,
+  logoutUserService, getRecentOrdersService ,validateStockService
 } from "./user.service.js";
 
 import {
@@ -88,17 +91,51 @@ export const verifyEmailOtp = async (req, res) => {
 };
 
 //login-password
+// export const loginWithPassword = async (req, res) => {
+//   try {
+//     const { email, password } = req.body;
+
+//     const result = await loginWithPasswordService({ email, password });
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Login successful",
+//       data: result,
+//     });
+//   } catch (err) {
+//     res.status(400).json({
+//       success: false,
+//       message: err.message,
+//     });
+//   }
+// };
+
 export const loginWithPassword = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const result = await loginWithPasswordService({ email, password });
+    const result = await loginWithPasswordService({
+      email,
+      password,
+    });
+
+    // SET REFRESH TOKEN COOKIE
+    res.cookie("refreshToken", result.refreshToken, {
+      httpOnly: true,
+      secure: true,
+     sameSite: "none",
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
 
     res.status(200).json({
       success: true,
       message: "Login successful",
-      data: result,
+      data: {
+        accessToken: result.accessToken,
+        user: result.user,
+      },
     });
+
   } catch (err) {
     res.status(400).json({
       success: false,
@@ -129,21 +166,55 @@ export const requestUserLoginOtp = async (req, res) => {
 
 
 // STEP 2: VERIFY OTP
+// export const verifyUserLoginOtp = async (req, res) => {
+//   try {
+//     const { email, otp } = req.body;
+
+//     const data = await verifyUserLoginOtpService(email, otp);
+
+//     res.json({
+//       success: true,
+//       message: "Login successful",
+//       data
+//     });
+//   } catch (err) {
+//     res.status(400).json({
+//       success: false,
+//       message: err.message
+//     });
+//   }
+// };
+
 export const verifyUserLoginOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
 
-    const data = await verifyUserLoginOtpService(email, otp);
+    const data = await verifyUserLoginOtpService(
+      email,
+      otp
+    );
+
+    // SET REFRESH TOKEN COOKIE
+    res.cookie("refreshToken", data.refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
 
     res.json({
       success: true,
       message: "Login successful",
-      data
+      data: {
+        accessToken: data.accessToken,
+        user: data.user,
+      },
     });
+
   } catch (err) {
     res.status(400).json({
       success: false,
-      message: err.message
+      message: err.message,
     });
   }
 };
@@ -355,6 +426,20 @@ export const getSingleProduct = async (req, res) => {
   }
 };
 
+
+export const getProductFilters = async (req, res) => {
+  try {
+    const filters = await fetchProductFilters(req.query);
+
+    res.status(200).json(filters);
+  } catch (err) {
+    console.log(err);
+
+    res.status(500).json({
+      message: "Failed to fetch filters",
+    });
+  }
+};
 
 
 /* ================= ADD TO CART ================= */
@@ -662,16 +747,45 @@ export const verifyPayment = async (req, res) => {
 };
 
 
+// export const getMyOrders = async (req, res) => {
+//   try {
+
+//     const userId = req.user.userId;
+
+//     const orders = await getMyOrdersService(userId);
+
+//     res.status(200).json({
+//       success: true,
+//       orders
+//     });
+
+//   } catch (error) {
+
+//     res.status(400).json({
+//       success: false,
+//       message: error.message
+//     });
+
+//   }
+// };
+
 export const getMyOrders = async (req, res) => {
   try {
 
     const userId = req.user.userId;
 
-    const orders = await getMyOrdersService(userId);
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 5;
+
+    const data = await getMyOrdersService(
+      userId,
+      page,
+      limit
+    );
 
     res.status(200).json({
       success: true,
-      orders
+      ...data,
     });
 
   } catch (error) {
@@ -683,7 +797,6 @@ export const getMyOrders = async (req, res) => {
 
   }
 };
-
 
 
 // ================= CANCEL ITEM =================
@@ -878,6 +991,106 @@ export const getOrderPolicyController = async (req, res) => {
 
     return res.status(500).json({
       message: "Failed to fetch order policy",
+    });
+  }
+};
+
+export const refreshAccessToken = async (
+  req,
+  res
+) => {
+  try {
+    console.log("Cookies:", req.cookies);
+    const refreshToken = req.cookies.refreshToken;
+
+    const accessToken =
+      await refreshAccessTokenService(
+        refreshToken
+      );
+
+    res.status(200).json({
+      success: true,
+      accessToken,
+    });
+
+  } catch (err) {
+     console.log(err);
+    res.status(401).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+
+export const logoutUser = async (req, res) => {
+  try {
+
+    await logoutUserService();
+
+    res.clearCookie("refreshToken", {
+  httpOnly: true,
+  secure: true,
+  sameSite: "none",
+});
+
+    res.status(200).json({
+      success: true,
+      message: "Logged out successfully",
+    });
+
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+export const getRecentOrders = async (
+  req,
+  res,
+) => {
+  try {
+    const data = await getRecentOrdersService(
+  req.user.userId,
+);
+
+res.json({
+  success: true,
+  totalOrders: data.totalOrders,
+  orders: data.recentOrders,
+});
+  } catch (err) {
+    console.error(
+      "RECENT ORDER ERROR:",
+      err,
+    );
+
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+
+
+export const validateStock = async (req, res) => {
+  try {
+
+    const data = await validateStockService({
+      userId: req.user.userId,
+      from: req.body.from,
+      items: req.body.items,
+    });
+
+    res.status(200).json(data);
+
+  } catch (err) {
+
+    res.status(400).json({
+      message: err.message,
     });
   }
 };

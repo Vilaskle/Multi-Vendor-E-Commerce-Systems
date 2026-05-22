@@ -9,8 +9,6 @@ const orderItemSchema = new mongoose.Schema({
     ref: "Product",
     required: true,
   },
-
-
   vendor: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Vendor",
@@ -194,6 +192,11 @@ deliveryCharge: {
   
 
 }, { timestamps: true });
+
+orderSchema.index({
+  user: 1,
+  createdAt: -1,
+});
 
 
 export default mongoose.model("Order", orderSchema);

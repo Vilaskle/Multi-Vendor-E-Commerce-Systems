@@ -33,7 +33,11 @@ saveRefundDetails,
 addReview,
 getProductReviews,
 getHomePage,
-getOrderPolicyController} from "./user.controller.js";
+getOrderPolicyController,
+refreshAccessToken,
+  logoutUser,
+getRecentOrders,
+getProductFilters,validateStock} from "./user.controller.js";
 import { authMiddleware } from "../../middlewares/authMiddleware.js";
 import { isUser } from "../../middlewares/roleMiddleware.js";
 import {
@@ -62,13 +66,7 @@ router.delete("/user/address/:addressId", authMiddleware, deleteAddress);
 router.get("/user/products", getProducts);
 router.get("/user/products/:id", getSingleProduct);
 
-// CART ROUTES
-// router.post("/user/cart", authMiddleware, isUser, addToCart);
-// router.get("/user/cart", authMiddleware, isUser, getCart);
-// router.put("/user/cart", authMiddleware, isUser, updateCartItem);
-// // router.delete("/user/cart/:productId", authMiddleware, isUser, removeCartItem);
-// router.delete("/user/cart/item", authMiddleware, isUser, removeCartItem);
-// router.delete("/user/cart", authMiddleware, isUser, clearCart);
+
 
 router.post("/user/cart", authMiddleware, isUser, addToCart);
 router.get("/user/cart", authMiddleware, isUser, getCart);
@@ -158,6 +156,25 @@ router.get("/reviews/:productId", getProductReviews);
 
 // router.get("/homepage", getHomePage);
 
-router.get("/order-policy", authMiddleware, isUser,getOrderPolicyController);
+router.get("/user/order-policy",getOrderPolicyController);
 
+router.post(
+  "/user/refresh-token",
+  refreshAccessToken
+);
+
+router.post(
+  "/user/logout",
+  logoutUser
+);
+
+router.get("/user/recent-orders", authMiddleware,isUser, getRecentOrders);
+router.get("/user/products/filters", getProductFilters);
+
+router.post(
+  "/user/validate-stock",
+  authMiddleware,
+  isUser,
+  validateStock
+);
 export default router;

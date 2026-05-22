@@ -21,6 +21,12 @@ import Transaction from "../../models/Transaction.js";
 import Admin from "../../models/Admin.js";
 
 
+
+import {
+  generateAccessToken,
+  generateRefreshToken,
+} from "../../utils/generateTokens.js";
+
 const MAX_ADDRESSES = 5;
 
 
@@ -171,24 +177,30 @@ export const loginWithPasswordService = async ({ email, password }) => {
   }
 
   // 4. Generate JWT (same style as OTP login)
-  const token = jwt.sign(
-    {
-      userId: user._id,
-      role: user.role,
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: "1d" }
-  );
+  // const token = jwt.sign(
+  //   {
+  //     userId: user._id,
+  //     role: user.role,
+  //   },
+  //   process.env.JWT_SECRET,
+  //   { expiresIn: "1d" }
+  // );
 
-  return {
-    token,
-    user: {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: "USER",
-    },
-  };
+  const accessToken = generateAccessToken(user);
+
+const refreshToken = generateRefreshToken(user);
+
+return {
+  accessToken,
+  refreshToken,
+  user: {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: "USER",
+  },
+};
+
 };
 
 
@@ -238,20 +250,19 @@ if (user.emailOtpExpiry < new Date()) {
   await user.save();
 
   // Generate JWT
-  const token = jwt.sign(
-    { userId: user._id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: "1d" }
-  );
+ const accessToken = generateAccessToken(user);
 
-  return {
-    token,
-    user: {
-      id: user._id,
-      name: user.name,
-      email: user.email
-    }
-  };
+const refreshToken = generateRefreshToken(user);
+
+return {
+  accessToken,
+  refreshToken,
+  user: {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+  },
+};
 
 };
 
@@ -912,7 +923,53 @@ export const fetchSingleProduct = async (productId) => {
   return product;
 };
 
+export const fetchProductFilters = async (query) => {
+  const { category, tag } = query;
 
+  const filter = {};
+
+  /* CATEGORY */
+
+  if (category) {
+    filter.category = new RegExp(
+      `^${category}$`,
+      "i"
+    );
+  }
+
+  /* TAG */
+
+  if (tag) {
+    filter.tags = {
+      $in: [new RegExp(`^${tag}$`, "i")],
+    };
+  }
+
+  /* FETCH PRODUCTS */
+
+  const products = await Product.find(filter);
+
+  /* UNIQUE SIZES */
+
+  const sizes = [
+    ...new Set(
+      products.flatMap((p) => p.sizes || [])
+    ),
+  ];
+
+  /* UNIQUE COLORS */
+
+  const colors = [
+    ...new Set(
+      products.flatMap((p) => p.colors || [])
+    ),
+  ];
+
+  return {
+    sizes,
+    colors,
+  };
+};
 
 /* ================= ADD TO CART ================= */
 export const addToCartService = async (userId, productId, quantity,selectedSize,
@@ -1081,36 +1138,56 @@ export const removeFromWishlistService = async (userId, productId) => {
 };
 
 
-export const getMyOrdersService = async (userId) => {
-  const orderGroups = await OrderGroup.find({ user: userId })
+
+// export const getMyOrdersService = async (userId) => {
+//   return await OrderGroup.find({ user: userId })
+//     .sort({ createdAt: -1 })
+//     .populate({
+//       path: "orders",
+//       populate: {
+//         path: "items.product",
+//         select: "name images price",
+//       },
+//     })
+//     .lean();
+// };
+
+export const getMyOrdersService = async (
+  userId,
+  page,
+  limit
+) => {
+
+  const skip = (page - 1) * limit;
+
+  const query = {
+    user: userId,
+    orders: { $exists: true, $ne: [] },
+  };
+
+  const totalOrders = await OrderGroup.countDocuments(query);
+
+  const orders = await OrderGroup.find(query)
     .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
     .populate({
       path: "orders",
       populate: {
         path: "items.product",
         select: "name images price",
       },
-    });
+    })
+    .lean();
 
-  console.log("FINAL ORDER GROUPS:", JSON.stringify(orderGroups, null, 2));
-
-  return orderGroups;
+  return {
+    orders,
+    totalOrders,
+    currentPage: page,
+    totalPages: Math.ceil(totalOrders / limit),
+  };
 };
 
-// export const getMyOrdersService = async (userId) => {
-
-//   const orderGroups = await OrderGroup.find({ user: userId })
-//    .populate({
-//   path: "orders",
-//   populate: {
-//     path: "items.product",
-//     select: "name images price",
-//   },
-// })
-//     .sort({ createdAt: -1 });
-
-//   return orderGroups;
-//   };
 
 export const cancelOrderItemService = async ({
   userId,
@@ -1758,4 +1835,119 @@ export const createOrderService = async (data, userId) => {
   await order.save();
 
   return order;
+};
+
+
+export const refreshAccessTokenService = async (
+  refreshToken
+) => {
+  if (!refreshToken) {
+    throw new Error("Refresh token missing");
+  }
+
+  const decoded = jwt.verify(
+    refreshToken,
+    process.env.JWT_REFRESH_SECRET
+  );
+
+  const accessToken = jwt.sign(
+    {
+      userId: decoded.userId,
+       role: decoded.role,
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: "1m",
+    }
+  );
+
+  return accessToken;
+};
+
+export const logoutUserService = async () => {
+  return true;
+};
+
+export const getRecentOrdersService = async (userId) => {
+  
+const totalOrders = await OrderGroup.countDocuments({
+  user: userId,
+  orders: { $exists: true, $ne: [] },
+});
+
+  const recentOrders = await OrderGroup.find({
+    user: userId,
+    orders: { $exists: true, $ne: [] },
+  })
+    .select(
+      "orders totalAmount createdAt paymentStatus"
+    )
+    .sort({ createdAt: -1 })
+    .limit(3)
+    .populate({
+      path: "orders",
+      select:
+        "items totalAmount paymentStatus createdAt",
+      populate: {
+        path: "items.product",
+        model: "Product",
+        select: "name images",
+      },
+    })
+    .lean();
+
+
+  return {
+    totalOrders,
+    recentOrders,
+  };
+};
+
+
+export const validateStockService = async ({
+  userId,
+  from,
+  items,
+}) => {
+
+  let sourceItems = [];
+
+  if (from === "cart") {
+    const cart = await Cart.findOne({ user: userId });
+
+    if (!cart) throw new Error("Cart not found");
+
+    sourceItems = items
+      .map((id) => cart.items.id(id))
+      .filter(Boolean);
+
+  } else {
+    sourceItems = items;
+  }
+
+  for (const item of sourceItems) {
+
+    const productId =
+      typeof item.product === "object"
+        ? item.product._id
+        : item.product;
+
+    const product = await Product.findById(productId);
+
+    if (!product) {
+      throw new Error("Product not found");
+    }
+
+    const qty = item.quantity || 1;
+
+    if (product.stock < qty) {
+      throw new Error(
+        `Only ${product.stock} item(s) available for ${product.name}`
+      );
+    }
+  }
+
+  return {
+    success: true,
+  };
 };

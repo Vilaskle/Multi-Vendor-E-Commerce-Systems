@@ -30,4 +30,6 @@ const orderGroupSchema = new mongoose.Schema(
 { timestamps: true }
 );
 
+orderGroupSchema.index({ user: 1, createdAt: -1 });
+orderGroupSchema.index({ orders: 1 });
 export default mongoose.model("OrderGroup", orderGroupSchema);
